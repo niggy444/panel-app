@@ -14,26 +14,36 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-        ::-webkit-scrollbar { width: 6px; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* Animaciones de entrada */
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(20px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .animate-section { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* Fondo con gradiente sutil */
+        .bg-solar-mesh {
+            background-color: #f8fafc;
+            background-image: radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.05) 0, transparent 50%), 
+                              radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0, transparent 50%);
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-slate-50">
+<body class="bg-solar-mesh min-h-screen">
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        // Importar módulos de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-        // --- CONFIGURACIÓN DE FIREBASE ACTUALIZADA ---
         const myCustomConfig = {
             apiKey: "AIzaSyBIaQoqFI10IQBXVwUDh7bA_0jBVntnZzU",
             authDomain: "solarpro-397be.firebaseapp.com",
@@ -44,22 +54,13 @@
             measurementId: "G-E0RV2VSEP7"
         };
 
-        // Lógica de detección de entorno
-        let finalConfig;
-        try {
-            finalConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myCustomConfig;
-        } catch (e) {
-            finalConfig = myCustomConfig;
-        }
-
-        const app = initializeApp(finalConfig);
+        const app = initializeApp(myCustomConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'solarpro-397be-main';
+        const appId = 'solarpro-397be-main';
 
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // Componente de Icono estable para React
         const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
             const iconRef = useRef(null);
             useEffect(() => {
@@ -81,263 +82,259 @@
             const [inventory, setInventory] = useState([]);
             const [finances, setFinances] = useState([]);
             const [searchTerm, setSearchTerm] = useState('');
-            const [permissionError, setPermissionError] = useState(null);
 
-            // Autenticación (Regla 3: Auth Antes de Queries)
             useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (err) {
-                        console.error("Auth Error:", err);
-                        setPermissionError("Error de autenticación inicial.");
-                    }
-                };
-                initAuth();
-                const unsubscribe = onAuthStateChanged(auth, setUser);
-                return () => unsubscribe();
+                signInAnonymously(auth);
+                return onAuthStateChanged(auth, setUser);
             }, []);
 
-            // Carga de Datos en Tiempo Real (Regla 1 y 3)
             useEffect(() => {
                 if (!user) return;
-                
-                // Ruta estricta (Regla 1)
-                const getPath = (col) => collection(db, 'artifacts', appId, 'public', 'data', col);
-
-                const handleError = (error) => {
-                    if (error.code === 'permission-denied') {
-                        setPermissionError("Permiso denegado: Revisa las reglas de seguridad de Firestore.");
-                    }
-                    console.error("Firestore Error:", error);
-                };
-
-                const unsubClients = onSnapshot(getPath('clients'), 
-                    snap => setClients(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-                    handleError
-                );
-                const unsubInv = onSnapshot(getPath('inventory'), 
-                    snap => setInventory(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-                    handleError
-                );
-                const unsubFin = onSnapshot(getPath('finances'), 
-                    snap => setFinances(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-                    handleError
-                );
-
-                return () => { unsubClients(); unsubInv(); unsubFin(); };
+                const path = (c) => collection(db, 'artifacts', appId, 'public', 'data', c);
+                const unsubC = onSnapshot(path('clients'), s => setClients(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubI = onSnapshot(path('inventory'), s => setInventory(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubF = onSnapshot(path('finances'), s => setFinances(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                return () => { unsubC(); unsubI(); unsubF(); };
             }, [user]);
 
             const deleteItem = async (col, id) => {
-                if (!user) return;
-                if(window.confirm('¿Deseas eliminar este registro permanentemente?')) {
-                    try {
-                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
-                    } catch (e) {
-                        console.error("Error al borrar:", e);
-                    }
+                if(window.confirm('¿Seguro que deseas eliminar este registro?')) {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
                 }
             };
 
             const stats = useMemo(() => {
                 const inc = finances.filter(f => f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
                 const exp = finances.filter(f => f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-                return { 
-                    balance: inc - exp, 
-                    clients: clients.length, 
-                    stock: inventory.reduce((a, c) => a + (Number(c.stock) || 0), 0) 
-                };
+                return { balance: inc - exp, clients: clients.length, stock: inventory.length };
             }, [finances, clients, inventory]);
 
             const NavItem = ({ id, icon, label }) => {
                 const active = activeTab === id;
                 return (
-                    <button onClick={() => setActiveTab(id)} className={`flex flex-col md:flex-row items-center justify-center space-y-1 md:space-y-0 md:space-x-3 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl transition-all ${active ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'}`}>
-                        <Icon name={icon} size={20} />
-                        <span className={`text-[10px] md:text-sm font-bold ${active ? 'block' : 'hidden md:block'}`}>{label}</span>
+                    <button 
+                        onClick={() => setActiveTab(id)} 
+                        className={`flex flex-col md:flex-row items-center justify-center gap-2 px-4 py-2.5 rounded-2xl transition-all duration-500 ${active ? 'bg-amber-500 text-white shadow-xl shadow-amber-200 scale-105' : 'text-slate-400 hover:text-slate-600 hover:bg-white'}`}
+                    >
+                        <Icon name={icon} size={20} strokeWidth={active ? 2.5 : 2} />
+                        <span className={`text-[10px] md:text-sm font-bold tracking-tight ${active ? 'block' : 'hidden md:block'}`}>{label}</span>
                     </button>
                 );
             };
 
+            const HeroHeader = ({ title, subtitle, icon, gradient }) => (
+                <div className={`relative overflow-hidden rounded-[2.5rem] p-8 md:p-12 mb-10 text-white shadow-2xl ${gradient} animate-section`}>
+                    <div className="relative z-10">
+                        <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md w-fit mb-6">
+                            <Icon name={icon} size={32} />
+                        </div>
+                        <h1 className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight leading-none">{title}</h1>
+                        <p className="text-white/80 text-lg font-medium max-w-xl">{subtitle}</p>
+                    </div>
+                    <Icon name={icon} size={400} className="absolute -right-20 -top-20 opacity-10 pointer-events-none" />
+                </div>
+            );
+
             if (!user) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-white">
-                    <Icon name="sun" size={48} className="text-amber-500 animate-spin" />
-                    <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Conectando con Firebase...</p>
+                    <div className="relative">
+                        <Icon name="sun" size={64} className="text-amber-500 animate-spin" />
+                        <div className="absolute inset-0 bg-amber-500/20 blur-xl rounded-full"></div>
+                    </div>
+                    <p className="mt-6 text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] animate-pulse">Conectando Sistema Solar</p>
                 </div>
             );
 
             return (
-                <div className="min-h-screen bg-slate-50 text-slate-900 pb-32 md:pb-12">
-                    {/* Alerta de Permisos */}
-                    {permissionError && (
-                        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-rose-500 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
-                            <Icon name="alert-triangle" />
-                            <span className="font-bold text-sm">{permissionError}</span>
-                            <button onClick={() => setPermissionError(null)} className="ml-4 opacity-70 hover:opacity-100"><Icon name="x" size={16}/></button>
-                        </div>
-                    )}
-
-                    {/* Navegación Desktop */}
-                    <nav className="fixed top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-xl border-b z-50 hidden md:flex items-center justify-between px-10">
-                        <div className="flex items-center space-x-3">
-                            <div className="bg-amber-500 p-2 rounded-xl text-white shadow-lg shadow-amber-200">
-                                <Icon name="sun" size={24} />
+                <div className="min-h-screen pb-32 md:pb-12">
+                    {/* Header Escritorio */}
+                    <nav className="fixed top-0 left-0 right-0 h-24 bg-white/70 backdrop-blur-2xl border-b border-slate-100 z-50 hidden md:flex items-center justify-between px-12">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-amber-500 p-2.5 rounded-2xl text-white shadow-lg shadow-amber-200">
+                                <Icon name="sun" size={26} strokeWidth={2.5} />
                             </div>
-                            <span className="text-xl font-black tracking-tighter">SOLAR<span className="text-amber-500">PRO</span></span>
+                            <span className="text-2xl font-black tracking-tighter text-slate-800">SOLAR<span className="text-amber-500">PRO</span></span>
                         </div>
-                        <div className="flex space-x-2 bg-slate-100/60 p-1.5 rounded-2xl">
+                        <div className="flex gap-2 bg-slate-100/50 p-1.5 rounded-[1.8rem]">
                             <NavItem id="dashboard" icon="layout-dashboard" label="Panel" />
                             <NavItem id="clients" icon="users" label="Clientes" />
                             <NavItem id="inventory" icon="package" label="Stock" />
                             <NavItem id="finances" icon="dollar-sign" label="Caja" />
                         </div>
                         <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white font-black shadow-md">JD</div>
+                             <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 shadow-lg border-2 border-white"></div>
                         </div>
                     </nav>
 
-                    {/* Navegación Mobile */}
-                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-2xl border shadow-2xl rounded-[2.5rem] z-50 flex items-center justify-around p-3 md:hidden">
+                    {/* Navegación Móvil */}
+                    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-2xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.8rem] z-50 flex items-center justify-around p-3 md:hidden">
                         <NavItem id="dashboard" icon="layout-dashboard" label="Inicio" />
                         <NavItem id="clients" icon="users" label="Clientes" />
                         <NavItem id="inventory" icon="package" label="Stock" />
                         <NavItem id="finances" icon="dollar-sign" label="Dinero" />
                     </nav>
 
-                    <main className="max-w-7xl mx-auto px-4 py-6 md:px-10 md:pt-28">
+                    <main className="max-w-7xl mx-auto px-6 py-8 md:pt-32">
                         {activeTab === 'dashboard' && (
-                            <div className="animate-fade-in space-y-6">
-                                <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-amber-100 relative overflow-hidden">
-                                    <div className="relative z-10">
-                                        <h1 className="text-3xl font-black mb-2">Panel de Control</h1>
-                                        <p className="opacity-90 font-medium">Gestión inteligente de energía solar.</p>
+                            <div className="animate-section">
+                                <HeroHeader 
+                                    title="Control de Energía" 
+                                    subtitle="Gestiona el crecimiento de tu empresa con datos en tiempo real y métricas precisas." 
+                                    icon="zap" 
+                                    gradient="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600" 
+                                />
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+                                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
+                                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-6 group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-500">
+                                            <Icon name="trending-up" size={32} />
+                                        </div>
+                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Balance Financiero</p>
+                                        <h3 className="text-5xl font-black text-slate-800">${stats.balance.toLocaleString()}</h3>
+                                        <Icon name="trending-up" size={150} className="absolute -right-10 -bottom-10 opacity-5" />
                                     </div>
-                                    <Icon name="sun" size={200} className="absolute -right-10 -top-10 opacity-10" />
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="bg-white p-8 rounded-[2rem] border shadow-sm hover:shadow-xl transition-shadow">
-                                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-4"><Icon name="trending-up" /></div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Balance Actual</p>
-                                        <h3 className="text-4xl font-black text-slate-800">${stats.balance.toLocaleString('es-MX')}</h3>
+                                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
+                                        <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-6 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-500">
+                                            <Icon name="users" size={32} />
+                                        </div>
+                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Cartera Activa</p>
+                                        <h3 className="text-5xl font-black text-slate-800">{stats.clients}</h3>
+                                        <Icon name="users" size={150} className="absolute -right-10 -bottom-10 opacity-5" />
                                     </div>
-                                    <div className="bg-white p-8 rounded-[2rem] border shadow-sm hover:shadow-xl transition-shadow">
-                                        <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-4"><Icon name="users" /></div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Total Clientes</p>
-                                        <h3 className="text-4xl font-black text-slate-800">{stats.clients}</h3>
-                                    </div>
-                                    <div className="bg-white p-8 rounded-[2rem] border shadow-sm hover:shadow-xl transition-shadow">
-                                        <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl w-fit mb-4"><Icon name="package" /></div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Items en Stock</p>
-                                        <h3 className="text-4xl font-black text-slate-800">{stats.stock}</h3>
+                                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
+                                        <div className="p-4 bg-orange-50 text-orange-600 rounded-2xl w-fit mb-6 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-500">
+                                            <Icon name="package" size={32} />
+                                        </div>
+                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Stock Disponible</p>
+                                        <h3 className="text-5xl font-black text-slate-800">{stats.stock}</h3>
+                                        <Icon name="package" size={150} className="absolute -right-10 -bottom-10 opacity-5" />
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'clients' && (
-                            <div className="animate-fade-in space-y-6">
-                                <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm">
-                                    <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-slate-800"><Icon name="plus" className="text-blue-500" /> Registrar Instalación</h3>
-                                    <form onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        if (!user) return;
-                                        const fd = new FormData(e.target);
-                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'clients'), {
-                                            name: fd.get('name'), 
-                                            phone: fd.get('phone'), 
-                                            address: fd.get('address'), 
-                                            warranty: fd.get('warranty'), 
-                                            date: fd.get('date'), 
-                                            panels: fd.get('panels')
-                                        });
-                                        e.target.reset();
-                                    }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Cliente</label>
-                                            <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Nombre completo" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Teléfono</label>
-                                            <input name="phone" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="+52..." />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Dirección</label>
-                                            <input name="address" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Calle, ciudad..." />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Garantía</label>
-                                            <input name="warranty" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="10 años" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Paneles</label>
-                                            <input name="panels" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="0" />
-                                        </div>
-                                        <div className="flex items-end">
-                                            <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">AÑADIR REGISTRO</button>
-                                        </div>
-                                    </form>
-                                </div>
-                                <div className="space-y-4">
-                                    {clients.map(c => (
-                                        <div key={c.id} className="bg-white p-6 rounded-[2rem] border flex flex-col md:flex-row md:items-center justify-between group hover:shadow-md transition-all gap-4">
-                                            <div className="flex items-center gap-5">
-                                                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center font-black text-2xl shadow-sm">{c.name?.charAt(0)}</div>
-                                                <div>
-                                                    <h4 className="font-black text-lg text-slate-800 leading-none mb-1">{c.name}</h4>
-                                                    <p className="text-xs font-bold text-slate-400">{c.address} • {c.phone}</p>
-                                                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-2 inline-block">GARANTÍA: {c.warranty}</span>
+                            <div className="animate-section">
+                                <HeroHeader 
+                                    title="Tus Clientes" 
+                                    subtitle="Seguimiento de instalaciones, garantías y contacto directo con cada usuario solar." 
+                                    icon="users" 
+                                    gradient="bg-gradient-to-br from-blue-600 to-indigo-800" 
+                                />
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                                    <div className="lg:col-span-4">
+                                        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl border border-slate-50 sticky top-28">
+                                            <h3 className="text-2xl font-black mb-8 text-slate-800 flex items-center gap-3"><Icon name="user-plus" className="text-blue-500" /> Nuevo Registro</h3>
+                                            <form onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const fd = new FormData(e.target);
+                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'clients'), {
+                                                    name: fd.get('name'), phone: fd.get('phone'), address: fd.get('address'), 
+                                                    warranty: fd.get('warranty'), date: fd.get('date'), panels: fd.get('panels')
+                                                });
+                                                e.target.reset();
+                                            }} className="space-y-5">
+                                                <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 border-none transition-all font-medium" placeholder="Nombre completo" />
+                                                <input name="phone" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 border-none font-medium" placeholder="Teléfono" />
+                                                <input name="address" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 border-none font-medium" placeholder="Dirección" />
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <input name="warranty" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Garantía" />
+                                                    <input name="panels" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Paneles" />
                                                 </div>
-                                            </div>
-                                            <button onClick={() => deleteItem('clients', c.id)} className="p-3 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Icon name="trash-2" /></button>
+                                                <input name="date" type="date" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" />
+                                                <button type="submit" className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-100 hover:bg-blue-700 hover:scale-[1.02] transition-all">REGISTRAR CLIENTE</button>
+                                            </form>
                                         </div>
-                                    ))}
+                                    </div>
+                                    <div className="lg:col-span-8 space-y-6">
+                                        <div className="relative mb-4">
+                                            <Icon name="search" className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Buscar por nombre o dirección..." 
+                                                className="w-full pl-14 pr-6 py-5 bg-white rounded-3xl border border-slate-100 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                            />
+                                        </div>
+                                        {clients.filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase())).map(c => (
+                                            <div key={c.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm flex flex-col md:flex-row md:items-center justify-between group hover:shadow-xl transition-all duration-500">
+                                                <div className="flex items-center gap-6">
+                                                    <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[1.8rem] flex items-center justify-center font-black text-3xl shadow-inner">{c.name?.charAt(0)}</div>
+                                                    <div>
+                                                        <h4 className="font-black text-2xl text-slate-800 leading-tight mb-2">{c.name}</h4>
+                                                        <div className="flex flex-wrap gap-4 text-sm font-bold text-slate-400">
+                                                            <span className="flex items-center gap-2"><Icon name="phone" size={14} className="text-blue-400"/> {c.phone}</span>
+                                                            <span className="flex items-center gap-2"><Icon name="map-pin" size={14}/> {c.address}</span>
+                                                        </div>
+                                                        <div className="mt-3">
+                                                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-widest">Garantía: {c.warranty}</span>
+                                                            <span className="ml-2 text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full uppercase tracking-widest">{c.panels} Paneles</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => deleteItem('clients', c.id)} className="p-4 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all self-end md:self-center"><Icon name="trash-2" size={24} /></button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'inventory' && (
-                            <div className="animate-fade-in space-y-6">
-                                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border">
-                                    <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-slate-800"><Icon name="package" className="text-orange-500" /> Gestión de Stock</h3>
+                            <div className="animate-section">
+                                <HeroHeader 
+                                    title="Inventario Solar" 
+                                    subtitle="Control exhaustivo de paneles, inversores y componentes críticos para tus proyectos." 
+                                    icon="package" 
+                                    gradient="bg-gradient-to-br from-slate-700 to-slate-900" 
+                                />
+                                <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm mb-12">
                                     <form onSubmit={async (e) => {
                                         e.preventDefault();
-                                        if (!user) return;
                                         const fd = new FormData(e.target);
                                         await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), {
                                             name: fd.get('name'), stock: Number(fd.get('stock')), price: Number(fd.get('price'))
                                         });
                                         e.target.reset();
                                     }} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Producto</label>
-                                            <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Panel 550W" />
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-slate-400 ml-2 uppercase tracking-widest">Producto</label>
+                                            <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Ej: Inversor 5kW" />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Unidades</label>
-                                            <input name="stock" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="0" />
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-slate-400 ml-2 uppercase tracking-widest">Unidades</label>
+                                            <input name="stock" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="0" />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Costo unitario</label>
-                                            <input name="price" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="0.00" />
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-slate-400 ml-2 uppercase tracking-widest">Costo Unit.</label>
+                                            <input name="price" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="$0.00" />
                                         </div>
-                                        <button type="submit" className="w-full py-4 bg-slate-800 text-white font-black rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95">AGREGAR</button>
+                                        <button type="submit" className="py-4 bg-slate-800 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all">AÑADIR STOCK</button>
                                     </form>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                                     {inventory.map(item => (
-                                        <div key={item.id} className="bg-white p-8 rounded-[2.5rem] border relative group hover:shadow-xl transition-all">
-                                            <div className={`absolute top-6 right-6 h-3 w-3 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500 shadow-sm'}`}></div>
-                                            <h4 className="font-black text-slate-800 text-lg mb-1">{item.name}</h4>
-                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">Costo: ${item.price?.toLocaleString()}</p>
-                                            <div className="mt-8">
-                                                <p className="text-4xl font-black text-slate-800">{item.stock} <span className="text-[10px] text-slate-400 font-bold">UNIDADES</span></p>
+                                        <div key={item.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 relative group hover:shadow-2xl transition-all duration-500 flex flex-col justify-between h-[300px]">
+                                            <div>
+                                                <div className={`absolute top-8 right-8 h-4 w-4 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]'}`}></div>
+                                                <div className="p-4 bg-slate-50 rounded-2xl w-fit mb-6 text-slate-600 group-hover:bg-amber-500 group-hover:text-white transition-all duration-500">
+                                                    <Icon name="zap" size={24} />
+                                                </div>
+                                                <h4 className="font-black text-slate-800 text-2xl mb-1 truncate">{item.name}</h4>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Costo: ${item.price?.toLocaleString()}</p>
                                             </div>
-                                            <button onClick={() => deleteItem('inventory', item.id)} className="mt-6 text-slate-200 hover:text-rose-500 transition-colors"><Icon name="trash-2" size={18} /></button>
+                                            <div className="mt-auto">
+                                                <div className="flex justify-between items-end mb-4">
+                                                    <p className="text-5xl font-black text-slate-800 tracking-tighter">{item.stock} <span className="text-xs text-slate-400 font-bold">UDS</span></p>
+                                                    <button onClick={() => deleteItem('inventory', item.id)} className="p-2 text-slate-200 hover:text-rose-500 transition-colors"><Icon name="trash-2" size={20} /></button>
+                                                </div>
+                                                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className={`h-full rounded-full transition-all duration-1000 ${item.stock < 5 ? 'bg-rose-500' : 'bg-emerald-500'}`} 
+                                                        style={{ width: `${Math.min((item.stock / 20) * 100, 100)}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -345,64 +342,77 @@
                         )}
 
                         {activeTab === 'finances' && (
-                            <div className="animate-fade-in space-y-6">
-                                <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm">
-                                    <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-slate-800"><Icon name="dollar-sign" className="text-emerald-500" /> Registro Contable</h3>
-                                    <form onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        if (!user) return;
-                                        const fd = new FormData(e.target);
-                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'finances'), {
-                                            description: fd.get('description'), 
-                                            amount: Number(fd.get('amount')), 
-                                            type: fd.get('type'), 
-                                            date: new Date().toISOString().split('T')[0]
-                                        });
-                                        e.target.reset();
-                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                                        <div className="space-y-1 lg:col-span-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Concepto</label>
-                                            <input name="description" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Venta de kit..." />
+                            <div className="animate-section">
+                                <HeroHeader 
+                                    title="Caja y Finanzas" 
+                                    subtitle="Manten el flujo de caja impecable. Registro de ventas y gastos de operación." 
+                                    icon="dollar-sign" 
+                                    gradient="bg-gradient-to-br from-emerald-500 to-teal-800" 
+                                />
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                                    <div className="lg:col-span-4 space-y-8">
+                                        <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-50">
+                                            <h3 className="text-2xl font-black mb-8 text-slate-800">Nueva Operación</h3>
+                                            <form onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const fd = new FormData(e.target);
+                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'finances'), {
+                                                    description: fd.get('description'), amount: Number(fd.get('amount')), 
+                                                    type: fd.get('type'), date: new Date().toISOString().split('T')[0]
+                                                });
+                                                e.target.reset();
+                                            }} className="space-y-5">
+                                                <input name="description" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Concepto (Ej: Venta Panel)" />
+                                                <input name="amount" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-emerald-600 text-lg" placeholder="Monto $" />
+                                                <select name="type" className="w-full p-4 bg-slate-50 rounded-2xl outline-none cursor-pointer font-bold text-slate-600">
+                                                    <option value="income">Ingreso (+)</option>
+                                                    <option value="expense">Gasto (-)</option>
+                                                </select>
+                                                <button type="submit" className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all uppercase tracking-widest text-[10px]">REGISTRAR MOVIMIENTO</button>
+                                            </form>
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Monto ($)</label>
-                                            <input name="amount" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="0.00" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Tipo</label>
-                                            <select name="type" className="w-full p-4 bg-slate-50 rounded-2xl outline-none cursor-pointer font-bold">
-                                                <option value="income">Ingreso (+)</option>
-                                                <option value="expense">Gasto (-)</option>
-                                            </select>
-                                        </div>
-                                        <button type="submit" className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 active:scale-95 transition-all uppercase tracking-widest text-[10px]">Guardar</button>
-                                    </form>
-                                </div>
-                                <div className="bg-white rounded-[2.5rem] border overflow-hidden shadow-sm">
-                                    <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historial Reciente</span>
-                                        <span className="font-black text-emerald-600">Balance: ${stats.balance.toLocaleString()}</span>
-                                    </div>
-                                    <div className="divide-y">
-                                        {finances.sort((a,b) => b.id > a.id ? 1 : -1).map(f => (
-                                            <div key={f.id} className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors">
-                                                <div className="flex items-center gap-5">
-                                                    <div className={`p-3 rounded-2xl ${f.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                        <Icon name={f.type === 'income' ? 'arrow-up-right' : 'arrow-down-right'} />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-black text-slate-800 leading-none mb-1">{f.description}</p>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{f.date}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-6">
-                                                    <span className={`text-lg font-black tabular-nums ${f.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                        {f.type === 'income' ? '+' : '-'}${f.amount?.toLocaleString('es-MX')}
-                                                    </span>
-                                                    <button onClick={() => deleteItem('finances', f.id)} className="text-slate-200 hover:text-rose-500 transition-all"><Icon name="trash-2" size={18} /></button>
-                                                </div>
+                                        <div className="bg-emerald-950 p-10 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
+                                            <p className="text-emerald-400 font-black text-xs uppercase tracking-[0.2em] mb-2">Balance Disponible</p>
+                                            <h2 className="text-5xl font-black tabular-nums tracking-tighter">${stats.balance.toLocaleString()}</h2>
+                                            <div className="mt-4 flex items-center gap-2 text-emerald-400 text-sm font-bold">
+                                                <Icon name="shield-check" size={16} /> Operación Segura
                                             </div>
-                                        ))}
+                                            <Icon name="dollar-sign" size={150} className="absolute -right-10 -bottom-10 opacity-10" />
+                                        </div>
+                                    </div>
+                                    <div className="lg:col-span-8">
+                                        <div className="bg-white rounded-[3rem] border border-slate-50 overflow-hidden shadow-sm">
+                                            <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
+                                                <h3 className="font-black text-slate-800 uppercase tracking-widest text-xs">Historial Contable</h3>
+                                            </div>
+                                            <div className="max-h-[800px] overflow-y-auto p-6 space-y-4">
+                                                {finances.sort((a,b) => b.id > a.id ? 1 : -1).map(f => (
+                                                    <div key={f.id} className="flex items-center justify-between p-6 hover:bg-slate-50 rounded-[2rem] transition-all group border border-transparent hover:border-slate-100">
+                                                        <div className="flex items-center gap-6">
+                                                            <div className={`p-4 rounded-2xl shadow-sm ${f.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                                <Icon name={f.type === 'income' ? 'arrow-up-right' : 'arrow-down-right'} strokeWidth={3} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-black text-slate-800 text-xl leading-none mb-2">{f.description}</p>
+                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{f.date}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-8">
+                                                            <span className={`text-2xl font-black tabular-nums ${f.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                                {f.type === 'income' ? '+' : '-'}${Number(f.amount).toLocaleString('es-MX')}
+                                                            </span>
+                                                            <button onClick={() => deleteItem('finances', f.id)} className="opacity-0 group-hover:opacity-100 p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Icon name="trash-2" size={20} /></button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {finances.length === 0 && (
+                                                    <div className="text-center py-32 text-slate-300">
+                                                        <Icon name="dollar-sign" size={64} className="mx-auto mb-4 opacity-20" />
+                                                        <p className="font-black uppercase tracking-widest text-sm">Sin movimientos registrados</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
