@@ -34,9 +34,9 @@
         // Importar módulos de Firebase desde CDN (Versión ESM)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-        // Globales del entorno
+        // Globales del entorno (Regla 1)
         const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -51,9 +51,7 @@
 
             useEffect(() => {
                 if (window.lucide && iconRef.current) {
-                    // Limpiamos contenido previo
                     iconRef.current.innerHTML = `<i data-lucide="${name}"></i>`;
-                    // Renderizamos solo el icono dentro del span controlado
                     window.lucide.createIcons({
                         elements: iconRef.current.querySelectorAll('[data-lucide]'),
                         attrs: {
@@ -65,25 +63,31 @@
                 }
             }, [name, size, strokeWidth]);
 
-            // Devolvemos un span estable que React sí pueda rastrear sin conflictos
             return <span ref={iconRef} className={`inline-flex items-center justify-center ${className}`}></span>;
         };
 
         const App = () => {
             const [user, setUser] = useState(null);
+            const [isAuthenticating, setIsAuthenticating] = useState(true);
             const [activeTab, setActiveTab] = useState('dashboard');
             const [clients, setClients] = useState([]);
             const [inventory, setInventory] = useState([]);
             const [finances, setFinances] = useState([]);
             const [searchTerm, setSearchTerm] = useState('');
 
-            // Autenticación (Regla 3)
+            // Autenticación obligatoria (Regla 3)
             useEffect(() => {
                 const initAuth = async () => {
                     try {
-                        await signInAnonymously(auth);
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
                     } catch (error) {
                         console.error("Error de autenticación:", error);
+                    } finally {
+                        setIsAuthenticating(false);
                     }
                 };
                 initAuth();
@@ -91,10 +95,11 @@
                 return () => unsubscribe();
             }, []);
 
-            // Carga de Datos (Regla 1 y 2)
+            // Carga de Datos protegida por estado de Auth (Regla 1 y 3)
             useEffect(() => {
                 if (!user) return;
                 
+                // Rutas estrictas (Regla 1)
                 const getPath = (col) => collection(db, 'artifacts', appId, 'public', 'data', col);
 
                 const unsubClients = onSnapshot(getPath('clients'), 
@@ -116,6 +121,7 @@
             }, [user]);
 
             const deleteItem = async (col, id) => {
+                if (!user) return;
                 const confirmed = window.confirm('¿Deseas eliminar este registro de forma permanente?');
                 if(confirmed) {
                     try {
@@ -169,10 +175,10 @@
                 </div>
             );
 
-            if (!user) return (
+            if (isAuthenticating || !user) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-white">
                     <Icon name="sun" size={48} className="text-amber-500 animate-spin" />
-                    <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Cargando Sistema...</p>
+                    <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Verificando permisos...</p>
                 </div>
             );
 
@@ -238,6 +244,7 @@
                                             <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-slate-800"><Icon name="plus" className="text-blue-500" /> Nuevo Registro</h3>
                                             <form onSubmit={async (e) => {
                                                 e.preventDefault();
+                                                if (!user) return;
                                                 const fd = new FormData(e.target);
                                                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'clients'), {
                                                     name: fd.get('name'), phone: fd.get('phone'), address: fd.get('address'), 
@@ -303,6 +310,7 @@
                                 <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 mb-8">
                                     <form onSubmit={async (e) => {
                                         e.preventDefault();
+                                        if (!user) return;
                                         const fd = new FormData(e.target);
                                         await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), {
                                             name: fd.get('name'), 
@@ -323,7 +331,7 @@
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Costo ($)</label>
                                             <input name="price" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="0.00" />
                                         </div>
-                                        <button type="submit" className="w-full py-4 bg-slate-800 text-white font-black rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95">Añadir Stock</button>
+                                        <button type="submit" className="w-full py-4 bg-slate-800 text-white font-black rounded-2xl shadow-lg active:scale-95">Añadir Stock</button>
                                     </form>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -354,6 +362,7 @@
                                             <h3 className="text-xl font-black mb-6">Nuevo Movimiento</h3>
                                             <form onSubmit={async (e) => {
                                                 e.preventDefault();
+                                                if (!user) return;
                                                 const fd = new FormData(e.target);
                                                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'finances'), {
                                                     description: fd.get('description'), 
