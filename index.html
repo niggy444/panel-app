@@ -9,17 +9,15 @@
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel para JSX con soporte de módulos -->
+    <!-- Babel para JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        /* Animaciones */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
-        /* Scrollbar styling */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
@@ -29,53 +27,63 @@
 <body class="bg-slate-50">
     <div id="root"></div>
 
-    <!-- Configuración de Firebase y App -->
     <script type="text/babel" data-type="module">
-        // Importar módulos de Firebase desde CDN (Versión ESM)
+        // Importar módulos de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-        // Globales del entorno (Regla 1)
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
+        // --- CONFIGURACIÓN DE FIREBASE ACTUALIZADA ---
+        const myCustomConfig = {
+            apiKey: "AIzaSyBIaQoqFI10IQBXVwUDh7bA_0jBVntnZzU",
+            authDomain: "solarpro-397be.firebaseapp.com",
+            projectId: "solarpro-397be",
+            storageBucket: "solarpro-397be.firebasestorage.app",
+            messagingSenderId: "107137996727",
+            appId: "1:107137996727:web:a03fc9bb9c133321463a32",
+            measurementId: "G-E0RV2VSEP7"
+        };
+
+        // Lógica de detección de entorno
+        let finalConfig;
+        try {
+            finalConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : myCustomConfig;
+        } catch (e) {
+            finalConfig = myCustomConfig;
+        }
+
+        const app = initializeApp(finalConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'solar-manager-v2';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'solarpro-397be-main';
 
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // Componente de Icono corregido para evitar errores de "removeChild"
+        // Componente de Icono estable para React
         const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
             const iconRef = useRef(null);
-
             useEffect(() => {
                 if (window.lucide && iconRef.current) {
                     iconRef.current.innerHTML = `<i data-lucide="${name}"></i>`;
                     window.lucide.createIcons({
                         elements: iconRef.current.querySelectorAll('[data-lucide]'),
-                        attrs: {
-                            'stroke-width': strokeWidth,
-                            width: size,
-                            height: size,
-                        }
+                        attrs: { 'stroke-width': strokeWidth, width: size, height: size }
                     });
                 }
             }, [name, size, strokeWidth]);
-
             return <span ref={iconRef} className={`inline-flex items-center justify-center ${className}`}></span>;
         };
 
         const App = () => {
             const [user, setUser] = useState(null);
-            const [isAuthenticating, setIsAuthenticating] = useState(true);
             const [activeTab, setActiveTab] = useState('dashboard');
             const [clients, setClients] = useState([]);
             const [inventory, setInventory] = useState([]);
             const [finances, setFinances] = useState([]);
             const [searchTerm, setSearchTerm] = useState('');
+            const [permissionError, setPermissionError] = useState(null);
 
-            // Autenticación obligatoria (Regla 3)
+            // Autenticación (Regla 3: Auth Antes de Queries)
             useEffect(() => {
                 const initAuth = async () => {
                     try {
@@ -84,10 +92,9 @@
                         } else {
                             await signInAnonymously(auth);
                         }
-                    } catch (error) {
-                        console.error("Error de autenticación:", error);
-                    } finally {
-                        setIsAuthenticating(false);
+                    } catch (err) {
+                        console.error("Auth Error:", err);
+                        setPermissionError("Error de autenticación inicial.");
                     }
                 };
                 initAuth();
@@ -95,26 +102,31 @@
                 return () => unsubscribe();
             }, []);
 
-            // Carga de Datos protegida por estado de Auth (Regla 1 y 3)
+            // Carga de Datos en Tiempo Real (Regla 1 y 3)
             useEffect(() => {
                 if (!user) return;
                 
-                // Rutas estrictas (Regla 1)
+                // Ruta estricta (Regla 1)
                 const getPath = (col) => collection(db, 'artifacts', appId, 'public', 'data', col);
+
+                const handleError = (error) => {
+                    if (error.code === 'permission-denied') {
+                        setPermissionError("Permiso denegado: Revisa las reglas de seguridad de Firestore.");
+                    }
+                    console.error("Firestore Error:", error);
+                };
 
                 const unsubClients = onSnapshot(getPath('clients'), 
                     snap => setClients(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-                    err => console.error("Error cargando clientes:", err)
+                    handleError
                 );
-                
                 const unsubInv = onSnapshot(getPath('inventory'), 
                     snap => setInventory(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-                    err => console.error("Error cargando inventario:", err)
+                    handleError
                 );
-                
                 const unsubFin = onSnapshot(getPath('finances'), 
                     snap => setFinances(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-                    err => console.error("Error cargando finanzas:", err)
+                    handleError
                 );
 
                 return () => { unsubClients(); unsubInv(); unsubFin(); };
@@ -122,8 +134,7 @@
 
             const deleteItem = async (col, id) => {
                 if (!user) return;
-                const confirmed = window.confirm('¿Deseas eliminar este registro de forma permanente?');
-                if(confirmed) {
+                if(window.confirm('¿Deseas eliminar este registro permanentemente?')) {
                     try {
                         await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
                     } catch (e) {
@@ -133,78 +144,64 @@
             };
 
             const stats = useMemo(() => {
-                const income = finances.filter(f => f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-                const expense = finances.filter(f => f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
+                const inc = finances.filter(f => f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
+                const exp = finances.filter(f => f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
                 return { 
-                    balance: income - expense, 
+                    balance: inc - exp, 
                     clients: clients.length, 
                     stock: inventory.reduce((a, c) => a + (Number(c.stock) || 0), 0) 
                 };
             }, [finances, clients, inventory]);
 
-            const filteredClients = clients.filter(c => 
-                c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                c.address?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            const NavItem = ({ id, icon, label }) => {
+                const active = activeTab === id;
+                return (
+                    <button onClick={() => setActiveTab(id)} className={`flex flex-col md:flex-row items-center justify-center space-y-1 md:space-y-0 md:space-x-3 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl transition-all ${active ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100'}`}>
+                        <Icon name={icon} size={20} />
+                        <span className={`text-[10px] md:text-sm font-bold ${active ? 'block' : 'hidden md:block'}`}>{label}</span>
+                    </button>
+                );
+            };
 
-            const NavItem = ({ id, icon, label }) => (
-                <button 
-                    onClick={() => setActiveTab(id)} 
-                    className={`flex flex-col md:flex-row items-center justify-center space-y-1 md:space-y-0 md:space-x-3 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl transition-all duration-300 ${activeTab === id ? 'bg-amber-500 text-white shadow-lg scale-105' : 'text-slate-400 hover:bg-slate-100'}`}
-                >
-                    <Icon name={icon} size={activeTab === id ? 22 : 20} strokeWidth={activeTab === id ? 2.5 : 2} />
-                    <span className={`text-[10px] md:text-sm font-bold tracking-tight ${activeTab === id ? 'block' : 'hidden md:block'}`}>{label}</span>
-                </button>
-            );
-
-            const SectionHeader = ({ title, subtitle, icon, color }) => (
-                <div className={`relative overflow-hidden rounded-[2rem] p-6 md:p-10 mb-6 md:mb-10 text-white shadow-xl ${color} animate-fade-in`}>
-                    <div className="relative z-10">
-                        <div className="flex items-center space-x-3 mb-3">
-                            <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-md">
-                                <Icon name={icon} size={24} />
-                            </div>
-                            <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] opacity-80">Solar Manager Pro</span>
-                        </div>
-                        <h2 className="text-2xl md:text-5xl font-black mb-3 leading-tight">{title}</h2>
-                        <p className="text-white/80 max-w-lg font-medium text-sm md:text-base leading-relaxed">{subtitle}</p>
-                    </div>
-                    <div className="absolute top-[-20%] right-[-10%] opacity-10 pointer-events-none">
-                        <Icon name={icon} size={300} />
-                    </div>
-                </div>
-            );
-
-            if (isAuthenticating || !user) return (
+            if (!user) return (
                 <div className="h-screen flex flex-col items-center justify-center bg-white">
                     <Icon name="sun" size={48} className="text-amber-500 animate-spin" />
-                    <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Verificando permisos...</p>
+                    <p className="mt-4 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Conectando con Firebase...</p>
                 </div>
             );
 
             return (
                 <div className="min-h-screen bg-slate-50 text-slate-900 pb-32 md:pb-12">
-                    {/* Header Desktop */}
-                    <nav className="fixed top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-xl border-b border-slate-100 z-50 hidden md:flex items-center justify-between px-10">
+                    {/* Alerta de Permisos */}
+                    {permissionError && (
+                        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-rose-500 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
+                            <Icon name="alert-triangle" />
+                            <span className="font-bold text-sm">{permissionError}</span>
+                            <button onClick={() => setPermissionError(null)} className="ml-4 opacity-70 hover:opacity-100"><Icon name="x" size={16}/></button>
+                        </div>
+                    )}
+
+                    {/* Navegación Desktop */}
+                    <nav className="fixed top-0 left-0 right-0 h-20 bg-white/80 backdrop-blur-xl border-b z-50 hidden md:flex items-center justify-between px-10">
                         <div className="flex items-center space-x-3">
                             <div className="bg-amber-500 p-2 rounded-xl text-white shadow-lg shadow-amber-200">
-                                <Icon name="sun" size={24} strokeWidth={2.5} />
+                                <Icon name="sun" size={24} />
                             </div>
                             <span className="text-xl font-black tracking-tighter">SOLAR<span className="text-amber-500">PRO</span></span>
                         </div>
-                        <div className="flex space-x-2 bg-slate-100/60 p-1.5 rounded-[1.5rem]">
+                        <div className="flex space-x-2 bg-slate-100/60 p-1.5 rounded-2xl">
                             <NavItem id="dashboard" icon="layout-dashboard" label="Panel" />
                             <NavItem id="clients" icon="users" label="Clientes" />
                             <NavItem id="inventory" icon="package" label="Stock" />
                             <NavItem id="finances" icon="dollar-sign" label="Caja" />
                         </div>
-                        <div className="flex items-center space-x-4">
-                            <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white font-black shadow-lg">JD</div>
+                        <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 flex items-center justify-center text-white font-black shadow-md">JD</div>
                         </div>
                     </nav>
 
-                    {/* Nav Mobile */}
-                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-2xl border border-white/40 shadow-2xl rounded-[2.5rem] z-50 flex items-center justify-around p-3 md:hidden">
+                    {/* Navegación Mobile */}
+                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-2xl border shadow-2xl rounded-[2.5rem] z-50 flex items-center justify-around p-3 md:hidden">
                         <NavItem id="dashboard" icon="layout-dashboard" label="Inicio" />
                         <NavItem id="clients" icon="users" label="Clientes" />
                         <NavItem id="inventory" icon="package" label="Stock" />
@@ -213,140 +210,134 @@
 
                     <main className="max-w-7xl mx-auto px-4 py-6 md:px-10 md:pt-28">
                         {activeTab === 'dashboard' && (
-                            <div className="animate-fade-in">
-                                <SectionHeader title="Resumen General" subtitle="Monitorea el rendimiento de tu negocio y la salud de tu inventario en tiempo real." icon="sun" color="bg-gradient-to-br from-amber-400 to-orange-600" />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-                                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all group">
-                                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-6 transition-colors group-hover:bg-emerald-500 group-hover:text-white"><Icon name="trending-up" size={28} /></div>
-                                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-1">Balance Total</p>
-                                        <h3 className="text-3xl md:text-5xl font-black tracking-tight">${stats.balance.toLocaleString('es-MX')}</h3>
+                            <div className="animate-fade-in space-y-6">
+                                <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-amber-100 relative overflow-hidden">
+                                    <div className="relative z-10">
+                                        <h1 className="text-3xl font-black mb-2">Panel de Control</h1>
+                                        <p className="opacity-90 font-medium">Gestión inteligente de energía solar.</p>
                                     </div>
-                                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all group">
-                                        <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-6 transition-colors group-hover:bg-blue-500 group-hover:text-white"><Icon name="users" size={28} /></div>
-                                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-1">Clientes Activos</p>
-                                        <h3 className="text-3xl md:text-5xl font-black tracking-tight">{stats.clients}</h3>
+                                    <Icon name="sun" size={200} className="absolute -right-10 -top-10 opacity-10" />
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="bg-white p-8 rounded-[2rem] border shadow-sm hover:shadow-xl transition-shadow">
+                                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-4"><Icon name="trending-up" /></div>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Balance Actual</p>
+                                        <h3 className="text-4xl font-black text-slate-800">${stats.balance.toLocaleString('es-MX')}</h3>
                                     </div>
-                                    <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all group">
-                                        <div className="p-4 bg-orange-50 text-orange-600 rounded-2xl w-fit mb-6 transition-colors group-hover:bg-orange-500 group-hover:text-white"><Icon name="package" size={28} /></div>
-                                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mb-1">Total Componentes</p>
-                                        <h3 className="text-3xl md:text-5xl font-black tracking-tight">{stats.stock}</h3>
+                                    <div className="bg-white p-8 rounded-[2rem] border shadow-sm hover:shadow-xl transition-shadow">
+                                        <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-4"><Icon name="users" /></div>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Total Clientes</p>
+                                        <h3 className="text-4xl font-black text-slate-800">{stats.clients}</h3>
+                                    </div>
+                                    <div className="bg-white p-8 rounded-[2rem] border shadow-sm hover:shadow-xl transition-shadow">
+                                        <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl w-fit mb-4"><Icon name="package" /></div>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Items en Stock</p>
+                                        <h3 className="text-4xl font-black text-slate-800">{stats.stock}</h3>
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'clients' && (
-                            <div className="animate-fade-in">
-                                <SectionHeader title="Gestión de Clientes" subtitle="Registro detallado de instalaciones, garantías y contactos directos." icon="users" color="bg-gradient-to-br from-blue-500 to-indigo-700" />
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                    <div className="lg:col-span-4">
-                                        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 sticky top-24">
-                                            <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-slate-800"><Icon name="plus" className="text-blue-500" /> Nuevo Registro</h3>
-                                            <form onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                if (!user) return;
-                                                const fd = new FormData(e.target);
-                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'clients'), {
-                                                    name: fd.get('name'), phone: fd.get('phone'), address: fd.get('address'), 
-                                                    warranty: fd.get('warranty'), date: fd.get('date'), panels: fd.get('panels'), 
-                                                    createdAt: new Date().toISOString()
-                                                });
-                                                e.target.reset();
-                                            }} className="space-y-4">
-                                                <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Nombre completo" />
-                                                <input name="phone" type="tel" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Teléfono" />
-                                                <input name="address" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="Dirección" />
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <input name="warranty" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Garantía" />
-                                                    <input name="panels" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Paneles" />
-                                                </div>
-                                                <input name="date" type="date" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
-                                                <button type="submit" className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-lg hover:bg-blue-700 transition-all active:scale-95">Guardar Cliente</button>
-                                            </form>
+                            <div className="animate-fade-in space-y-6">
+                                <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm">
+                                    <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-slate-800"><Icon name="plus" className="text-blue-500" /> Registrar Instalación</h3>
+                                    <form onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        if (!user) return;
+                                        const fd = new FormData(e.target);
+                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'clients'), {
+                                            name: fd.get('name'), 
+                                            phone: fd.get('phone'), 
+                                            address: fd.get('address'), 
+                                            warranty: fd.get('warranty'), 
+                                            date: fd.get('date'), 
+                                            panels: fd.get('panels')
+                                        });
+                                        e.target.reset();
+                                    }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Cliente</label>
+                                            <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Nombre completo" />
                                         </div>
-                                    </div>
-                                    <div className="lg:col-span-8 space-y-4">
-                                        <div className="mb-6 px-4">
-                                            <div className="relative">
-                                                <Icon name="search" size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Buscar por nombre o dirección..." 
-                                                    className="w-full pl-12 pr-4 py-4 bg-white rounded-2xl border border-slate-100 shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                />
-                                            </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Teléfono</label>
+                                            <input name="phone" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="+52..." />
                                         </div>
-                                        {filteredClients.map(c => (
-                                            <div key={c.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 flex flex-col md:flex-row md:items-center justify-between group hover:shadow-xl transition-all">
-                                                <div className="flex items-center space-x-6">
-                                                    <div className="h-14 w-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xl">{c.name?.charAt(0)}</div>
-                                                    <div>
-                                                        <h4 className="font-black text-slate-800 text-lg leading-tight">{c.name}</h4>
-                                                        <div className="flex flex-col md:flex-row md:gap-4 text-xs font-bold text-slate-400 mt-2">
-                                                            <span className="flex items-center gap-1"><Icon name="phone" size={14} className="text-blue-400"/> {c.phone}</span>
-                                                            <span className="flex items-center gap-1"><Icon name="map-pin" size={14}/> {c.address}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-4 mt-4 md:mt-0">
-                                                    <div className="text-right hidden md:block">
-                                                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Garantía</p>
-                                                        <p className="font-bold text-emerald-600">{c.warranty}</p>
-                                                    </div>
-                                                    <button onClick={() => deleteItem('clients', c.id)} className="p-3 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all active:scale-90"><Icon name="trash-2" size={20} /></button>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Dirección</label>
+                                            <input name="address" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Calle, ciudad..." />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Garantía</label>
+                                            <input name="warranty" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="10 años" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Paneles</label>
+                                            <input name="panels" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="0" />
+                                        </div>
+                                        <div className="flex items-end">
+                                            <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">AÑADIR REGISTRO</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                <div className="space-y-4">
+                                    {clients.map(c => (
+                                        <div key={c.id} className="bg-white p-6 rounded-[2rem] border flex flex-col md:flex-row md:items-center justify-between group hover:shadow-md transition-all gap-4">
+                                            <div className="flex items-center gap-5">
+                                                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center font-black text-2xl shadow-sm">{c.name?.charAt(0)}</div>
+                                                <div>
+                                                    <h4 className="font-black text-lg text-slate-800 leading-none mb-1">{c.name}</h4>
+                                                    <p className="text-xs font-bold text-slate-400">{c.address} • {c.phone}</p>
+                                                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full mt-2 inline-block">GARANTÍA: {c.warranty}</span>
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                            <button onClick={() => deleteItem('clients', c.id)} className="p-3 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Icon name="trash-2" /></button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
 
                         {activeTab === 'inventory' && (
-                            <div className="animate-fade-in">
-                                <SectionHeader title="Almacén Solar" subtitle="Control de paneles, inversores y componentes críticos para tus proyectos." icon="package" color="bg-gradient-to-br from-slate-700 to-slate-900" />
-                                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 mb-8">
+                            <div className="animate-fade-in space-y-6">
+                                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border">
+                                    <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-slate-800"><Icon name="package" className="text-orange-500" /> Gestión de Stock</h3>
                                     <form onSubmit={async (e) => {
                                         e.preventDefault();
                                         if (!user) return;
                                         const fd = new FormData(e.target);
                                         await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), {
-                                            name: fd.get('name'), 
-                                            stock: Number(fd.get('stock')), 
-                                            price: Number(fd.get('price'))
+                                            name: fd.get('name'), stock: Number(fd.get('stock')), price: Number(fd.get('price'))
                                         });
                                         e.target.reset();
-                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                                         <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Producto</label>
-                                            <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Panel Jinko 550W" />
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Producto</label>
+                                            <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Panel 550W" />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Stock</label>
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Unidades</label>
                                             <input name="stock" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="0" />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Costo ($)</label>
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Costo unitario</label>
                                             <input name="price" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="0.00" />
                                         </div>
-                                        <button type="submit" className="w-full py-4 bg-slate-800 text-white font-black rounded-2xl shadow-lg active:scale-95">Añadir Stock</button>
+                                        <button type="submit" className="w-full py-4 bg-slate-800 text-white font-black rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95">AGREGAR</button>
                                     </form>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {inventory.map(item => (
-                                        <div key={item.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 relative hover:shadow-xl transition-all group overflow-hidden">
-                                            <div className={`absolute top-4 right-4 h-3 w-3 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                                            <h4 className="font-black text-slate-800 text-xl mb-1 truncate">{item.name}</h4>
-                                            <p className="text-xs text-slate-400 font-bold mb-4 uppercase">Precio unit: ${Number(item.price).toLocaleString()}</p>
-                                            <p className="text-4xl font-black mt-4">{item.stock} <span className="text-xs text-slate-400 font-medium uppercase tracking-widest">uds</span></p>
-                                            <div className="mt-6 flex justify-between items-center">
-                                                <div className="h-1.5 w-2/3 bg-slate-100 rounded-full overflow-hidden">
-                                                    <div className={`h-full rounded-full ${item.stock < 5 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(item.stock * 10, 100)}%` }}></div>
-                                                </div>
-                                                <button onClick={() => deleteItem('inventory', item.id)} className="text-slate-200 hover:text-rose-500 transition-colors"><Icon name="trash-2" size={18} /></button>
+                                        <div key={item.id} className="bg-white p-8 rounded-[2.5rem] border relative group hover:shadow-xl transition-all">
+                                            <div className={`absolute top-6 right-6 h-3 w-3 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500 shadow-sm'}`}></div>
+                                            <h4 className="font-black text-slate-800 text-lg mb-1">{item.name}</h4>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">Costo: ${item.price?.toLocaleString()}</p>
+                                            <div className="mt-8">
+                                                <p className="text-4xl font-black text-slate-800">{item.stock} <span className="text-[10px] text-slate-400 font-bold">UNIDADES</span></p>
                                             </div>
+                                            <button onClick={() => deleteItem('inventory', item.id)} className="mt-6 text-slate-200 hover:text-rose-500 transition-colors"><Icon name="trash-2" size={18} /></button>
                                         </div>
                                     ))}
                                 </div>
@@ -354,67 +345,64 @@
                         )}
 
                         {activeTab === 'finances' && (
-                            <div className="animate-fade-in">
-                                <SectionHeader title="Contabilidad" subtitle="Registro histórico de ingresos y egresos para mantener tu flujo de caja saludable." icon="dollar-sign" color="bg-gradient-to-br from-emerald-500 to-teal-800" />
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                    <div className="lg:col-span-4">
-                                        <div className="bg-white p-8 rounded-[3rem] shadow-xl border border-slate-50 sticky top-24">
-                                            <h3 className="text-xl font-black mb-6">Nuevo Movimiento</h3>
-                                            <form onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                if (!user) return;
-                                                const fd = new FormData(e.target);
-                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'finances'), {
-                                                    description: fd.get('description'), 
-                                                    amount: Number(fd.get('amount')),
-                                                    type: fd.get('type'), 
-                                                    date: fd.get('date'), 
-                                                    createdAt: new Date().toISOString()
-                                                });
-                                                e.target.reset();
-                                            }} className="space-y-4">
-                                                <input name="description" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Concepto" />
-                                                <input name="amount" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Monto $" />
-                                                <select name="type" className="w-full p-4 bg-slate-50 rounded-2xl outline-none cursor-pointer">
-                                                    <option value="income">Ingreso (+)</option>
-                                                    <option value="expense">Gasto (-)</option>
-                                                </select>
-                                                <input name="date" type="date" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
-                                                <button type="submit" className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-lg hover:bg-emerald-700 transition-all active:scale-95">Registrar en Caja</button>
-                                            </form>
+                            <div className="animate-fade-in space-y-6">
+                                <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm">
+                                    <h3 className="text-xl font-black mb-8 flex items-center gap-3 text-slate-800"><Icon name="dollar-sign" className="text-emerald-500" /> Registro Contable</h3>
+                                    <form onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        if (!user) return;
+                                        const fd = new FormData(e.target);
+                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'finances'), {
+                                            description: fd.get('description'), 
+                                            amount: Number(fd.get('amount')), 
+                                            type: fd.get('type'), 
+                                            date: new Date().toISOString().split('T')[0]
+                                        });
+                                        e.target.reset();
+                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                                        <div className="space-y-1 lg:col-span-1">
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Concepto</label>
+                                            <input name="description" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Venta de kit..." />
                                         </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Monto ($)</label>
+                                            <input name="amount" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="0.00" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Tipo</label>
+                                            <select name="type" className="w-full p-4 bg-slate-50 rounded-2xl outline-none cursor-pointer font-bold">
+                                                <option value="income">Ingreso (+)</option>
+                                                <option value="expense">Gasto (-)</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 active:scale-95 transition-all uppercase tracking-widest text-[10px]">Guardar</button>
+                                    </form>
+                                </div>
+                                <div className="bg-white rounded-[2.5rem] border overflow-hidden shadow-sm">
+                                    <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historial Reciente</span>
+                                        <span className="font-black text-emerald-600">Balance: ${stats.balance.toLocaleString()}</span>
                                     </div>
-                                    <div className="lg:col-span-8 bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
-                                        <div className="p-6 border-b font-black uppercase text-[10px] tracking-widest text-slate-400 flex justify-between">
-                                            <span>Historial de Movimientos</span>
-                                            <span className="text-emerald-600">Balance: ${stats.balance.toLocaleString()}</span>
-                                        </div>
-                                        <div className="max-h-[600px] overflow-y-auto p-4 space-y-2">
-                                            {finances.sort((a,b) => new Date(b.date) - new Date(a.date)).map(f => (
-                                                <div key={f.id} className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl group transition-all">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`p-3 rounded-xl ${f.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                            <Icon name={f.type === 'income' ? 'arrow-up-right' : 'arrow-down-right'} />
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-bold text-slate-700 leading-tight">{f.description}</p>
-                                                            <p className="text-[10px] text-slate-400 uppercase font-black tracking-tight">{f.date}</p>
-                                                        </div>
+                                    <div className="divide-y">
+                                        {finances.sort((a,b) => b.id > a.id ? 1 : -1).map(f => (
+                                            <div key={f.id} className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors">
+                                                <div className="flex items-center gap-5">
+                                                    <div className={`p-3 rounded-2xl ${f.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                        <Icon name={f.type === 'income' ? 'arrow-up-right' : 'arrow-down-right'} />
                                                     </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <span className={`text-lg font-black tabular-nums ${f.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                            {f.type === 'income' ? '+' : '-'}${Number(f.amount).toLocaleString('es-MX')}
-                                                        </span>
-                                                        <button onClick={() => deleteItem('finances', f.id)} className="text-slate-200 hover:text-rose-500 transition-all active:scale-90"><Icon name="trash-2" size={18} /></button>
+                                                    <div>
+                                                        <p className="font-black text-slate-800 leading-none mb-1">{f.description}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{f.date}</p>
                                                     </div>
                                                 </div>
-                                            ))}
-                                            {finances.length === 0 && (
-                                                <div className="text-center py-20 text-slate-300 font-medium uppercase tracking-widest text-xs">
-                                                    Sin movimientos financieros
+                                                <div className="flex items-center gap-6">
+                                                    <span className={`text-lg font-black tabular-nums ${f.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                        {f.type === 'income' ? '+' : '-'}${f.amount?.toLocaleString('es-MX')}
+                                                    </span>
+                                                    <button onClick={() => deleteItem('finances', f.id)} className="text-slate-200 hover:text-rose-500 transition-all"><Icon name="trash-2" size={18} /></button>
                                                 </div>
-                                            )}
-                                        </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
