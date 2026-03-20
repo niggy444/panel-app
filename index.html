@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Manager Pro - Gestión de Energía</title>
+    <title>Solar Manager Pro - Sistema Integral de Gestión</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -17,34 +17,33 @@
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         
-        /* Animaciones de entrada */
         @keyframes slideUp { 
             from { opacity: 0; transform: translateY(20px); } 
             to { opacity: 1; transform: translateY(0); } 
         }
-        .animate-section { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-section { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         
-        /* Fondo con gradiente sutil */
         .bg-solar-mesh {
             background-color: #f8fafc;
             background-image: radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.05) 0, transparent 50%), 
                               radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0, transparent 50%);
         }
 
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-shadow { box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.05); }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
-<body class="bg-solar-mesh min-h-screen">
+<body class="bg-solar-mesh min-h-screen selection:bg-amber-100">
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-        const myCustomConfig = {
+        // Configuración de Firebase del usuario
+        const firebaseConfig = {
             apiKey: "AIzaSyBIaQoqFI10IQBXVwUDh7bA_0jBVntnZzU",
             authDomain: "solarpro-397be.firebaseapp.com",
             projectId: "solarpro-397be",
@@ -54,13 +53,14 @@
             measurementId: "G-E0RV2VSEP7"
         };
 
-        const app = initializeApp(myCustomConfig);
+        const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appId = 'solarpro-397be-main';
 
         const { useState, useEffect, useMemo, useRef } = React;
 
+        // Componente Icono Helper
         const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
             const iconRef = useRef(null);
             useEffect(() => {
@@ -78,201 +78,209 @@
         const App = () => {
             const [user, setUser] = useState(null);
             const [activeTab, setActiveTab] = useState('dashboard');
-            const [clients, setClients] = useState([]);
-            const [inventory, setInventory] = useState([]);
+            
+            // Colecciones de Datos
+            const [projects, setProjects] = useState([]);
+            const [staff, setStaff] = useState([]);
             const [finances, setFinances] = useState([]);
-            const [searchTerm, setSearchTerm] = useState('');
+            const [inventory, setInventory] = useState([]);
+            const [quotes, setQuotes] = useState([]);
 
+            // Autenticación
             useEffect(() => {
                 signInAnonymously(auth);
                 return onAuthStateChanged(auth, setUser);
             }, []);
 
+            // Escucha de Datos en Tiempo Real
             useEffect(() => {
                 if (!user) return;
                 const path = (c) => collection(db, 'artifacts', appId, 'public', 'data', c);
-                const unsubC = onSnapshot(path('clients'), s => setClients(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-                const unsubI = onSnapshot(path('inventory'), s => setInventory(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                
+                const unsubP = onSnapshot(path('projects'), s => setProjects(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubS = onSnapshot(path('staff'), s => setStaff(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 const unsubF = onSnapshot(path('finances'), s => setFinances(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-                return () => { unsubC(); unsubI(); unsubF(); };
+                const unsubI = onSnapshot(path('inventory'), s => setInventory(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubQ = onSnapshot(path('quotes'), s => setQuotes(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                
+                return () => { unsubP(); unsubS(); unsubF(); unsubI(); unsubQ(); };
             }, [user]);
 
-            const deleteItem = async (col, id) => {
-                if(window.confirm('¿Seguro que deseas eliminar este registro?')) {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', col, id));
-                }
-            };
-
+            // Utilidades de Cálculo Financiero
             const stats = useMemo(() => {
-                const inc = finances.filter(f => f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-                const exp = finances.filter(f => f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-                return { balance: inc - exp, clients: clients.length, stock: inventory.length };
-            }, [finances, clients, inventory]);
+                const now = new Date();
+                const todayStr = now.toISOString().split('T')[0];
+                
+                const income = finances.filter(f => f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
+                const expense = finances.filter(f => f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
+                
+                // Ganancia Hoy
+                const todayIncome = finances.filter(f => f.date === todayStr && f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
+                const todayExpense = finances.filter(f => f.date === todayStr && f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
+
+                return {
+                    balance: income - expense,
+                    todayProfit: todayIncome - todayExpense,
+                    activeProjects: projects.filter(p => p.status !== 'Terminado').length,
+                    lowStock: inventory.filter(i => i.stock < 5).length
+                };
+            }, [finances, projects, inventory]);
 
             const NavItem = ({ id, icon, label }) => {
                 const active = activeTab === id;
                 return (
-                    <button 
-                        onClick={() => setActiveTab(id)} 
-                        className={`flex flex-col md:flex-row items-center justify-center gap-2 px-4 py-2.5 rounded-2xl transition-all duration-500 ${active ? 'bg-amber-500 text-white shadow-xl shadow-amber-200 scale-105' : 'text-slate-400 hover:text-slate-600 hover:bg-white'}`}
-                    >
-                        <Icon name={icon} size={20} strokeWidth={active ? 2.5 : 2} />
+                    <button onClick={() => setActiveTab(id)} className={`flex flex-col md:flex-row items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl transition-all duration-300 ${active ? 'bg-amber-500 text-white shadow-xl scale-105' : 'text-slate-400 hover:bg-white'}`}>
+                        <Icon name={icon} size={18} />
                         <span className={`text-[10px] md:text-sm font-bold tracking-tight ${active ? 'block' : 'hidden md:block'}`}>{label}</span>
                     </button>
                 );
             };
 
-            const HeroHeader = ({ title, subtitle, icon, gradient }) => (
-                <div className={`relative overflow-hidden rounded-[2.5rem] p-8 md:p-12 mb-10 text-white shadow-2xl ${gradient} animate-section`}>
+            const Hero = ({ title, subtitle, icon, color }) => (
+                <div className={`relative overflow-hidden rounded-[2.5rem] p-8 md:p-12 mb-10 text-white shadow-2xl ${color} animate-section`}>
                     <div className="relative z-10">
-                        <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md w-fit mb-6">
-                            <Icon name={icon} size={32} />
-                        </div>
+                        <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md w-fit mb-6"><Icon name={icon} size={32} /></div>
                         <h1 className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight leading-none">{title}</h1>
-                        <p className="text-white/80 text-lg font-medium max-w-xl">{subtitle}</p>
+                        <p className="text-white/80 text-lg font-medium max-w-xl leading-relaxed">{subtitle}</p>
                     </div>
                     <Icon name={icon} size={400} className="absolute -right-20 -top-20 opacity-10 pointer-events-none" />
                 </div>
             );
 
             if (!user) return (
-                <div className="h-screen flex flex-col items-center justify-center bg-white">
-                    <div className="relative">
-                        <Icon name="sun" size={64} className="text-amber-500 animate-spin" />
-                        <div className="absolute inset-0 bg-amber-500/20 blur-xl rounded-full"></div>
-                    </div>
-                    <p className="mt-6 text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px] animate-pulse">Conectando Sistema Solar</p>
+                <div className="h-screen flex flex-col items-center justify-center">
+                    <Icon name="sun" size={48} className="text-amber-500 animate-spin" />
+                    <p className="mt-4 font-black text-slate-400 tracking-widest text-[10px]">INICIANDO ERP INTEGRAL...</p>
                 </div>
             );
 
             return (
-                <div className="min-h-screen pb-32 md:pb-12">
-                    {/* Header Escritorio */}
-                    <nav className="fixed top-0 left-0 right-0 h-24 bg-white/70 backdrop-blur-2xl border-b border-slate-100 z-50 hidden md:flex items-center justify-between px-12">
+                <div className="min-h-screen pb-32 md:pb-12 md:pt-24">
+                    {/* Navegación Superior Desktop */}
+                    <nav className="fixed top-0 left-0 right-0 h-24 bg-white/70 backdrop-blur-2xl border-b border-slate-100 z-50 hidden md:flex items-center justify-between px-10">
                         <div className="flex items-center gap-3">
-                            <div className="bg-amber-500 p-2.5 rounded-2xl text-white shadow-lg shadow-amber-200">
-                                <Icon name="sun" size={26} strokeWidth={2.5} />
-                            </div>
-                            <span className="text-2xl font-black tracking-tighter text-slate-800">SOLAR<span className="text-amber-500">PRO</span></span>
+                            <div className="bg-amber-500 p-2 rounded-xl text-white shadow-lg"><Icon name="sun" size={24} strokeWidth={2.5} /></div>
+                            <span className="text-xl font-black tracking-tighter">SOLAR<span className="text-amber-500">PRO</span></span>
                         </div>
-                        <div className="flex gap-2 bg-slate-100/50 p-1.5 rounded-[1.8rem]">
+                        <div className="flex gap-1 bg-slate-100/50 p-1.5 rounded-[1.8rem]">
                             <NavItem id="dashboard" icon="layout-dashboard" label="Panel" />
-                            <NavItem id="clients" icon="users" label="Clientes" />
+                            <NavItem id="projects" icon="briefcase" label="Proyectos" />
+                            <NavItem id="staff" icon="users" label="Equipo" />
+                            <NavItem id="finances" icon="dollar-sign" label="Finanzas" />
                             <NavItem id="inventory" icon="package" label="Stock" />
-                            <NavItem id="finances" icon="dollar-sign" label="Caja" />
+                            <NavItem id="quotes" icon="file-text" label="Cotizar" />
                         </div>
-                        <div className="flex items-center gap-4">
-                             <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 shadow-lg border-2 border-white"></div>
-                        </div>
+                        <div className="h-10 w-10 rounded-2xl bg-slate-200 border-2 border-white"></div>
                     </nav>
 
-                    {/* Navegación Móvil */}
-                    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-md bg-white/80 backdrop-blur-2xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.8rem] z-50 flex items-center justify-around p-3 md:hidden">
-                        <NavItem id="dashboard" icon="layout-dashboard" label="Inicio" />
-                        <NavItem id="clients" icon="users" label="Clientes" />
-                        <NavItem id="inventory" icon="package" label="Stock" />
-                        <NavItem id="finances" icon="dollar-sign" label="Dinero" />
+                    {/* Navegación Móvil Inferior */}
+                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-xl bg-white/90 backdrop-blur-2xl border border-white/40 shadow-2xl rounded-[2.5rem] z-50 flex items-center justify-around p-2 md:hidden">
+                        <NavItem id="dashboard" icon="layout-dashboard" label="Panel" />
+                        <NavItem id="projects" icon="briefcase" label="Proy" />
+                        <NavItem id="staff" icon="users" label="Personal" />
+                        <NavItem id="finances" icon="dollar-sign" label="Caja" />
+                        <NavItem id="quotes" icon="file-text" label="Cotizar" />
                     </nav>
 
-                    <main className="max-w-7xl mx-auto px-6 py-8 md:pt-32">
+                    <main className="max-w-7xl mx-auto px-6 py-6">
+                        
+                        {/* 1. DASHBOARD */}
                         {activeTab === 'dashboard' && (
                             <div className="animate-section">
-                                <HeroHeader 
-                                    title="Control de Energía" 
-                                    subtitle="Gestiona el crecimiento de tu empresa con datos en tiempo real y métricas precisas." 
-                                    icon="zap" 
-                                    gradient="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600" 
-                                />
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
-                                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-6 group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-500">
-                                            <Icon name="trending-up" size={32} />
-                                        </div>
-                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Balance Financiero</p>
-                                        <h3 className="text-5xl font-black text-slate-800">${stats.balance.toLocaleString()}</h3>
-                                        <Icon name="trending-up" size={150} className="absolute -right-10 -bottom-10 opacity-5" />
+                                <Hero title="Visión General" subtitle="Resumen ejecutivo del estado de tu empresa en tiempo real." icon="zap" color="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
+                                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-4 group-hover:bg-emerald-500 group-hover:text-white transition-all"><Icon name="trending-up" /></div>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Utilidad Total</p>
+                                        <h3 className="text-4xl font-black text-slate-800 tracking-tighter">${stats.balance.toLocaleString()}</h3>
                                     </div>
-                                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
-                                        <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-6 group-hover:bg-blue-500 group-hover:text-white transition-colors duration-500">
-                                            <Icon name="users" size={32} />
-                                        </div>
-                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Cartera Activa</p>
-                                        <h3 className="text-5xl font-black text-slate-800">{stats.clients}</h3>
-                                        <Icon name="users" size={150} className="absolute -right-10 -bottom-10 opacity-5" />
+                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
+                                        <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl w-fit mb-4 group-hover:bg-amber-500 group-hover:text-white transition-all"><Icon name="sun" /></div>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Utilidad Hoy</p>
+                                        <h3 className="text-4xl font-black text-slate-800 tracking-tighter">${stats.todayProfit.toLocaleString()}</h3>
                                     </div>
-                                    <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl transition-all duration-500 group relative overflow-hidden">
-                                        <div className="p-4 bg-orange-50 text-orange-600 rounded-2xl w-fit mb-6 group-hover:bg-orange-500 group-hover:text-white transition-colors duration-500">
-                                            <Icon name="package" size={32} />
-                                        </div>
-                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-2">Stock Disponible</p>
-                                        <h3 className="text-5xl font-black text-slate-800">{stats.stock}</h3>
-                                        <Icon name="package" size={150} className="absolute -right-10 -bottom-10 opacity-5" />
+                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
+                                        <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-4 group-hover:bg-blue-500 group-hover:text-white transition-all"><Icon name="clock" /></div>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Proyectos Activos</p>
+                                        <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{stats.activeProjects}</h3>
+                                    </div>
+                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
+                                        <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl w-fit mb-4 group-hover:bg-rose-500 group-hover:text-white transition-all"><Icon name="alert-triangle" /></div>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Alertas Stock</p>
+                                        <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{stats.lowStock}</h3>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {activeTab === 'clients' && (
+                        {/* 2. GESTIÓN DE PROYECTOS */}
+                        {activeTab === 'projects' && (
                             <div className="animate-section">
-                                <HeroHeader 
-                                    title="Tus Clientes" 
-                                    subtitle="Seguimiento de instalaciones, garantías y contacto directo con cada usuario solar." 
-                                    icon="users" 
-                                    gradient="bg-gradient-to-br from-blue-600 to-indigo-800" 
-                                />
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                                <Hero title="Proyectos y Servicios" subtitle="Control total de instalaciones. Seguimiento desde la obra hasta el cierre." icon="briefcase" color="bg-gradient-to-br from-blue-600 to-indigo-800" />
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                                     <div className="lg:col-span-4">
-                                        <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl border border-slate-50 sticky top-28">
-                                            <h3 className="text-2xl font-black mb-8 text-slate-800 flex items-center gap-3"><Icon name="user-plus" className="text-blue-500" /> Nuevo Registro</h3>
+                                        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 sticky top-28">
+                                            <h3 className="text-xl font-black mb-6 flex items-center gap-2"><Icon name="plus-circle" className="text-blue-500" /> Nuevo Servicio</h3>
                                             <form onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 const fd = new FormData(e.target);
-                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'clients'), {
-                                                    name: fd.get('name'), phone: fd.get('phone'), address: fd.get('address'), 
-                                                    warranty: fd.get('warranty'), date: fd.get('date'), panels: fd.get('panels')
+                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'projects'), {
+                                                    client: fd.get('client'),
+                                                    service: fd.get('service'),
+                                                    status: 'Pendiente',
+                                                    team: fd.get('team'),
+                                                    date: fd.get('date'),
+                                                    value: Number(fd.get('value'))
                                                 });
                                                 e.target.reset();
-                                            }} className="space-y-5">
-                                                <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 border-none transition-all font-medium" placeholder="Nombre completo" />
-                                                <input name="phone" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 border-none font-medium" placeholder="Teléfono" />
-                                                <input name="address" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 border-none font-medium" placeholder="Dirección" />
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <input name="warranty" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Garantía" />
-                                                    <input name="panels" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Paneles" />
-                                                </div>
-                                                <input name="date" type="date" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" />
-                                                <button type="submit" className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl shadow-blue-100 hover:bg-blue-700 hover:scale-[1.02] transition-all">REGISTRAR CLIENTE</button>
+                                            }} className="space-y-4">
+                                                <input name="client" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Cliente" />
+                                                <select name="service" className="w-full p-4 bg-slate-50 rounded-2xl outline-none">
+                                                    <option>Paneles Solares</option>
+                                                    <option>Calentador Solar</option>
+                                                    <option>Electricidad</option>
+                                                    <option>Aires Acondicionados</option>
+                                                </select>
+                                                <input name="team" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Técnicos asignados" />
+                                                <input name="value" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Valor Proyecto $" />
+                                                <input name="date" type="date" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
+                                                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl hover:bg-blue-700 transition-all">INICIAR PROYECTO</button>
                                             </form>
                                         </div>
                                     </div>
-                                    <div className="lg:col-span-8 space-y-6">
-                                        <div className="relative mb-4">
-                                            <Icon name="search" className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
-                                            <input 
-                                                type="text" 
-                                                placeholder="Buscar por nombre o dirección..." 
-                                                className="w-full pl-14 pr-6 py-5 bg-white rounded-3xl border border-slate-100 shadow-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-                                                value={searchTerm}
-                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                            />
-                                        </div>
-                                        {clients.filter(c => c.name?.toLowerCase().includes(searchTerm.toLowerCase())).map(c => (
-                                            <div key={c.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm flex flex-col md:flex-row md:items-center justify-between group hover:shadow-xl transition-all duration-500">
+                                    <div className="lg:col-span-8 space-y-4">
+                                        {projects.map(p => (
+                                            <div key={p.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 flex flex-col md:flex-row md:items-center justify-between group hover:shadow-xl transition-all">
                                                 <div className="flex items-center gap-6">
-                                                    <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[1.8rem] flex items-center justify-center font-black text-3xl shadow-inner">{c.name?.charAt(0)}</div>
+                                                    <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center font-black text-2xl ${p.status === 'Terminado' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                        {p.client?.charAt(0)}
+                                                    </div>
                                                     <div>
-                                                        <h4 className="font-black text-2xl text-slate-800 leading-tight mb-2">{c.name}</h4>
-                                                        <div className="flex flex-wrap gap-4 text-sm font-bold text-slate-400">
-                                                            <span className="flex items-center gap-2"><Icon name="phone" size={14} className="text-blue-400"/> {c.phone}</span>
-                                                            <span className="flex items-center gap-2"><Icon name="map-pin" size={14}/> {c.address}</span>
-                                                        </div>
-                                                        <div className="mt-3">
-                                                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-widest">Garantía: {c.warranty}</span>
-                                                            <span className="ml-2 text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full uppercase tracking-widest">{c.panels} Paneles</span>
+                                                        <h4 className="font-black text-xl text-slate-800 leading-tight">{p.client}</h4>
+                                                        <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{p.service} • {p.date}</p>
+                                                        <div className="flex items-center gap-2 mt-3">
+                                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${
+                                                                p.status === 'Terminado' ? 'bg-emerald-100 text-emerald-700' : 
+                                                                p.status === 'En proceso' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+                                                            }`}>
+                                                                {p.status}
+                                                            </span>
+                                                            <span className="text-[10px] font-bold text-slate-400"><Icon name="users" size={10} className="mr-1" /> {p.team}</span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <button onClick={() => deleteItem('clients', c.id)} className="p-4 text-slate-200 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all self-end md:self-center"><Icon name="trash-2" size={24} /></button>
+                                                <div className="flex items-center gap-4 mt-4 md:mt-0">
+                                                    <select 
+                                                        onChange={async (e) => await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', p.id), { status: e.target.value })}
+                                                        value={p.status}
+                                                        className="text-xs font-bold bg-slate-100 p-2 rounded-xl outline-none"
+                                                    >
+                                                        <option>Pendiente</option>
+                                                        <option>En proceso</option>
+                                                        <option>Terminado</option>
+                                                    </select>
+                                                    <button onClick={() => deleteItem('projects', p.id)} className="p-3 text-slate-200 hover:text-rose-500 transition-all"><Icon name="trash-2" /></button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -280,144 +288,204 @@
                             </div>
                         )}
 
-                        {activeTab === 'inventory' && (
+                        {/* 3. GESTIÓN DE PERSONAL */}
+                        {activeTab === 'staff' && (
                             <div className="animate-section">
-                                <HeroHeader 
-                                    title="Inventario Solar" 
-                                    subtitle="Control exhaustivo de paneles, inversores y componentes críticos para tus proyectos." 
-                                    icon="package" 
-                                    gradient="bg-gradient-to-br from-slate-700 to-slate-900" 
-                                />
-                                <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm mb-12">
-                                    <form onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const fd = new FormData(e.target);
-                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), {
-                                            name: fd.get('name'), stock: Number(fd.get('stock')), price: Number(fd.get('price'))
-                                        });
-                                        e.target.reset();
-                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 ml-2 uppercase tracking-widest">Producto</label>
-                                            <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Ej: Inversor 5kW" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 ml-2 uppercase tracking-widest">Unidades</label>
-                                            <input name="stock" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="0" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black text-slate-400 ml-2 uppercase tracking-widest">Costo Unit.</label>
-                                            <input name="price" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="$0.00" />
-                                        </div>
-                                        <button type="submit" className="py-4 bg-slate-800 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all">AÑADIR STOCK</button>
-                                    </form>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                                    {inventory.map(item => (
-                                        <div key={item.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 relative group hover:shadow-2xl transition-all duration-500 flex flex-col justify-between h-[300px]">
-                                            <div>
-                                                <div className={`absolute top-8 right-8 h-4 w-4 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]'}`}></div>
-                                                <div className="p-4 bg-slate-50 rounded-2xl w-fit mb-6 text-slate-600 group-hover:bg-amber-500 group-hover:text-white transition-all duration-500">
-                                                    <Icon name="zap" size={24} />
-                                                </div>
-                                                <h4 className="font-black text-slate-800 text-2xl mb-1 truncate">{item.name}</h4>
-                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Costo: ${item.price?.toLocaleString()}</p>
-                                            </div>
-                                            <div className="mt-auto">
-                                                <div className="flex justify-between items-end mb-4">
-                                                    <p className="text-5xl font-black text-slate-800 tracking-tighter">{item.stock} <span className="text-xs text-slate-400 font-bold">UDS</span></p>
-                                                    <button onClick={() => deleteItem('inventory', item.id)} className="p-2 text-slate-200 hover:text-rose-500 transition-colors"><Icon name="trash-2" size={20} /></button>
-                                                </div>
-                                                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                                    <div 
-                                                        className={`h-full rounded-full transition-all duration-1000 ${item.stock < 5 ? 'bg-rose-500' : 'bg-emerald-500'}`} 
-                                                        style={{ width: `${Math.min((item.stock / 20) * 100, 100)}%` }}
-                                                    ></div>
+                                <Hero title="Gestión de Equipo" subtitle="Asigna trabajos, controla asistencias y mide la productividad de tus técnicos." icon="users" color="bg-gradient-to-br from-emerald-600 to-teal-800" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm flex flex-col items-center text-center">
+                                        <div className="w-20 h-20 bg-slate-100 rounded-full mb-4 flex items-center justify-center text-slate-300"><Icon name="plus" size={32} /></div>
+                                        <button onClick={async () => {
+                                            const name = prompt("Nombre del técnico:");
+                                            if(name) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff'), { name, role: 'Técnico', attendance: 0, productivity: 0 });
+                                        }} className="font-black text-sm text-emerald-600 uppercase tracking-widest">Añadir Técnico</button>
+                                    </div>
+                                    {staff.map(s => (
+                                        <div key={s.id} className="bg-white p-8 rounded-[2.5rem] border shadow-sm relative group overflow-hidden">
+                                            <div className="flex flex-col items-center text-center">
+                                                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center font-black text-xl mb-4 group-hover:scale-110 transition-transform">{s.name?.charAt(0)}</div>
+                                                <h4 className="font-black text-slate-800 text-lg">{s.name}</h4>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{s.role}</p>
+                                                
+                                                <div className="grid grid-cols-2 gap-4 w-full mt-6 pt-6 border-t border-slate-50">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-300 uppercase">Trabajos</p>
+                                                        <p className="text-xl font-black text-slate-800">{s.productivity || 0}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-300 uppercase">Status</p>
+                                                        <span className="text-[10px] font-black text-emerald-600">Activo</span>
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <button onClick={() => deleteItem('staff', s.id)} className="absolute top-4 right-4 text-slate-100 group-hover:text-rose-400 transition-all"><Icon name="trash-2" size={16} /></button>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
+                        {/* 4. FINANZAS Y CONTROL */}
                         {activeTab === 'finances' && (
                             <div className="animate-section">
-                                <HeroHeader 
-                                    title="Caja y Finanzas" 
-                                    subtitle="Manten el flujo de caja impecable. Registro de ventas y gastos de operación." 
-                                    icon="dollar-sign" 
-                                    gradient="bg-gradient-to-br from-emerald-500 to-teal-800" 
-                                />
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                                    <div className="lg:col-span-4 space-y-8">
-                                        <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-50">
-                                            <h3 className="text-2xl font-black mb-8 text-slate-800">Nueva Operación</h3>
+                                <Hero title="Control de Caja" subtitle="Análisis de utilidades reales diarias, semanales y mensuales." icon="dollar-sign" color="bg-gradient-to-br from-emerald-500 to-teal-800" />
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                    <div className="lg:col-span-4">
+                                        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 mb-6">
+                                            <h3 className="text-xl font-black mb-6">Registro Contable</h3>
                                             <form onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 const fd = new FormData(e.target);
                                                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'finances'), {
-                                                    description: fd.get('description'), amount: Number(fd.get('amount')), 
-                                                    type: fd.get('type'), date: new Date().toISOString().split('T')[0]
+                                                    description: fd.get('description'),
+                                                    amount: Number(fd.get('amount')),
+                                                    type: fd.get('type'),
+                                                    date: fd.get('date')
                                                 });
                                                 e.target.reset();
-                                            }} className="space-y-5">
-                                                <input name="description" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Concepto (Ej: Venta Panel)" />
-                                                <input name="amount" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-emerald-600 text-lg" placeholder="Monto $" />
-                                                <select name="type" className="w-full p-4 bg-slate-50 rounded-2xl outline-none cursor-pointer font-bold text-slate-600">
+                                            }} className="space-y-4">
+                                                <input name="description" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Concepto" />
+                                                <input name="amount" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-emerald-600" placeholder="Monto $" />
+                                                <select name="type" className="w-full p-4 bg-slate-50 rounded-2xl outline-none">
                                                     <option value="income">Ingreso (+)</option>
                                                     <option value="expense">Gasto (-)</option>
                                                 </select>
-                                                <button type="submit" className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all uppercase tracking-widest text-[10px]">REGISTRAR MOVIMIENTO</button>
+                                                <input name="date" type="date" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
+                                                <button type="submit" className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-xl hover:bg-emerald-700 transition-all">REGISTRAR EN CAJA</button>
                                             </form>
                                         </div>
                                         <div className="bg-emerald-950 p-10 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
-                                            <p className="text-emerald-400 font-black text-xs uppercase tracking-[0.2em] mb-2">Balance Disponible</p>
-                                            <h2 className="text-5xl font-black tabular-nums tracking-tighter">${stats.balance.toLocaleString()}</h2>
-                                            <div className="mt-4 flex items-center gap-2 text-emerald-400 text-sm font-bold">
-                                                <Icon name="shield-check" size={16} /> Operación Segura
-                                            </div>
+                                            <p className="text-emerald-400 font-black text-xs uppercase tracking-[0.2em] mb-2">Utilidad Acumulada</p>
+                                            <h2 className="text-5xl font-black tracking-tighter tabular-nums">${stats.balance.toLocaleString()}</h2>
                                             <Icon name="dollar-sign" size={150} className="absolute -right-10 -bottom-10 opacity-10" />
                                         </div>
                                     </div>
                                     <div className="lg:col-span-8">
-                                        <div className="bg-white rounded-[3rem] border border-slate-50 overflow-hidden shadow-sm">
-                                            <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
-                                                <h3 className="font-black text-slate-800 uppercase tracking-widest text-xs">Historial Contable</h3>
+                                        <div className="bg-white rounded-[2.5rem] border border-slate-50 overflow-hidden shadow-sm">
+                                            <div className="p-6 bg-slate-50/50 border-b flex justify-between items-center">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historial Financiero Reciente</span>
                                             </div>
-                                            <div className="max-h-[800px] overflow-y-auto p-6 space-y-4">
+                                            <div className="max-h-[600px] overflow-y-auto p-4 space-y-2">
                                                 {finances.sort((a,b) => b.id > a.id ? 1 : -1).map(f => (
-                                                    <div key={f.id} className="flex items-center justify-between p-6 hover:bg-slate-50 rounded-[2rem] transition-all group border border-transparent hover:border-slate-100">
-                                                        <div className="flex items-center gap-6">
-                                                            <div className={`p-4 rounded-2xl shadow-sm ${f.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                                <Icon name={f.type === 'income' ? 'arrow-up-right' : 'arrow-down-right'} strokeWidth={3} />
+                                                    <div key={f.id} className="flex items-center justify-between p-5 hover:bg-slate-50 rounded-[2rem] transition-all group border border-transparent hover:border-slate-100">
+                                                        <div className="flex items-center gap-5">
+                                                            <div className={`p-3 rounded-2xl ${f.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                                <Icon name={f.type === 'income' ? 'arrow-up-right' : 'arrow-down-right'} />
                                                             </div>
                                                             <div>
-                                                                <p className="font-black text-slate-800 text-xl leading-none mb-2">{f.description}</p>
+                                                                <p className="font-black text-slate-800 leading-none mb-2">{f.description}</p>
                                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{f.date}</p>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-8">
-                                                            <span className={`text-2xl font-black tabular-nums ${f.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                                {f.type === 'income' ? '+' : '-'}${Number(f.amount).toLocaleString('es-MX')}
+                                                        <div className="flex items-center gap-6">
+                                                            <span className={`text-xl font-black ${f.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                                {f.type === 'income' ? '+' : '-'}${f.amount?.toLocaleString()}
                                                             </span>
-                                                            <button onClick={() => deleteItem('finances', f.id)} className="opacity-0 group-hover:opacity-100 p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"><Icon name="trash-2" size={20} /></button>
+                                                            <button onClick={() => deleteItem('finances', f.id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 transition-all"><Icon name="trash-2" size={18} /></button>
                                                         </div>
                                                     </div>
                                                 ))}
-                                                {finances.length === 0 && (
-                                                    <div className="text-center py-32 text-slate-300">
-                                                        <Icon name="dollar-sign" size={64} className="mx-auto mb-4 opacity-20" />
-                                                        <p className="font-black uppercase tracking-widest text-sm">Sin movimientos registrados</p>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         )}
+
+                        {/* 5. INVENTARIO */}
+                        {activeTab === 'inventory' && (
+                            <div className="animate-section">
+                                <Hero title="Almacén Técnico" subtitle="Control de materiales y herramientas asignadas por empleado." icon="package" color="bg-gradient-to-br from-slate-700 to-slate-900" />
+                                <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm mb-10">
+                                    <form onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const fd = new FormData(e.target);
+                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), {
+                                            name: fd.get('name'), stock: Number(fd.get('stock')), type: fd.get('type')
+                                        });
+                                        e.target.reset();
+                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                        <input name="name" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre Material/Herramienta" />
+                                        <input name="stock" type="number" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Stock" />
+                                        <select name="type" className="p-4 bg-slate-50 rounded-2xl outline-none">
+                                            <option>Material (Cable, Panel, etc)</option>
+                                            <option>Herramienta Eléctrica</option>
+                                            <option>Consumibles</option>
+                                        </select>
+                                        <button type="submit" className="py-4 bg-slate-800 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all">AÑADIR</button>
+                                    </form>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    {inventory.map(item => (
+                                        <div key={item.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 relative group hover:shadow-2xl transition-all duration-500 h-[250px] flex flex-col justify-between">
+                                            <div>
+                                                <div className={`absolute top-6 right-6 h-3 w-3 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500 shadow-sm'}`}></div>
+                                                <h4 className="font-black text-slate-800 text-xl mb-1">{item.name}</h4>
+                                                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{item.type}</p>
+                                            </div>
+                                            <div className="mt-auto">
+                                                <p className="text-4xl font-black text-slate-800 tracking-tighter">{item.stock} <span className="text-[10px] text-slate-400 font-bold uppercase">Uds</span></p>
+                                                <div className="mt-4 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                                    <div className={`h-full rounded-full ${item.stock < 5 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(item.stock * 10, 100)}%` }}></div>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => deleteItem('inventory', item.id)} className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 text-slate-200 hover:text-rose-500 transition-all"><Icon name="trash-2" size={16} /></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 6. COTIZADOR Y CATÁLOGO */}
+                        {activeTab === 'quotes' && (
+                            <div className="animate-section">
+                                <Hero title="Cotizador Inteligente" subtitle="Calcula presupuestos rápidos basándote en tu catálogo de servicios." icon="file-text" color="bg-gradient-to-br from-indigo-500 to-purple-700" />
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-50">
+                                        <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><Icon name="calculator" className="text-indigo-500" /> Generador de Presupuesto</h3>
+                                        <div className="space-y-6">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-transparent hover:border-indigo-500 transition-all cursor-pointer">
+                                                    <Icon name="sun" className="text-amber-500 mb-2" />
+                                                    <p className="font-black text-xs uppercase tracking-widest text-slate-500">Solar</p>
+                                                </div>
+                                                <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-transparent hover:border-indigo-500 transition-all cursor-pointer">
+                                                    <Icon name="wind" className="text-blue-500 mb-2" />
+                                                    <p className="font-black text-xs uppercase tracking-widest text-slate-500">Aire A/C</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-4">
+                                                <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre del Cliente" />
+                                                <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Costo de Materiales $" />
+                                                <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Mano de Obra Estimada $" />
+                                                <div className="p-6 bg-indigo-50 rounded-2xl border-2 border-dashed border-indigo-200">
+                                                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1 text-center">Utilidad Recomendada (30%)</p>
+                                                    <p className="text-2xl font-black text-indigo-600 text-center tracking-tighter">Sugerencia de Venta: $...</p>
+                                                </div>
+                                                <button className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 transition-all">GENERAR Y GUARDAR PDF</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-10 rounded-[3rem] border border-slate-50">
+                                        <h3 className="text-2xl font-black mb-8">Servicios Guardados</h3>
+                                        <div className="space-y-4">
+                                            {['Panel Solar 550W Inst.', 'Mantenimiento A/C', 'Instalación Boiler Solar'].map((s, i) => (
+                                                <div key={i} className="p-6 bg-slate-50 rounded-3xl flex items-center justify-between group hover:bg-indigo-50 transition-all">
+                                                    <span className="font-black text-slate-800">{s}</span>
+                                                    <button className="p-2 bg-white rounded-xl shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all"><Icon name="plus" size={16}/></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                     </main>
+                    
+                    <footer className="max-w-7xl mx-auto px-10 pb-10 text-center text-slate-300 font-bold uppercase tracking-[0.5em] text-[8px]">
+                        Solar Manager Pro - Sistema Integral de Gestión Corporativa
+                    </footer>
                 </div>
             );
         };
