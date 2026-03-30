@@ -21,7 +21,7 @@
             from { opacity: 0; transform: translateY(20px); } 
             to { opacity: 1; transform: translateY(0); } 
         }
-        .animate-section { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-section { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         
         .bg-solar-mesh {
             background-color: #f8fafc;
@@ -32,6 +32,16 @@
         .custom-shadow { box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.05); }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.5);
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="bg-solar-mesh min-h-screen selection:bg-amber-100">
@@ -39,10 +49,10 @@
 
     <script type="text/babel" data-type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-        // Configuración de Firebase del usuario
+        // Configuración de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBIaQoqFI10IQBXVwUDh7bA_0jBVntnZzU",
             authDomain: "solarpro-397be.firebaseapp.com",
@@ -60,7 +70,6 @@
 
         const { useState, useEffect, useMemo, useRef } = React;
 
-        // Componente Icono Helper
         const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
             const iconRef = useRef(null);
             useEffect(() => {
@@ -78,21 +87,23 @@
         const App = () => {
             const [user, setUser] = useState(null);
             const [activeTab, setActiveTab] = useState('dashboard');
+            const [projectTab, setProjectTab] = useState('list');
+            const [selectedProjectId, setSelectedProjectId] = useState(null);
+            const [selectedStaffId, setSelectedStaffId] = useState(null);
             
-            // Colecciones de Datos
             const [projects, setProjects] = useState([]);
             const [staff, setStaff] = useState([]);
             const [finances, setFinances] = useState([]);
             const [inventory, setInventory] = useState([]);
             const [quotes, setQuotes] = useState([]);
 
-            // Autenticación
+            // Regla 3: Autenticación antes de cualquier query
             useEffect(() => {
                 signInAnonymously(auth);
                 return onAuthStateChanged(auth, setUser);
             }, []);
 
-            // Escucha de Datos en Tiempo Real
+            // Escuchadores en tiempo real
             useEffect(() => {
                 if (!user) return;
                 const path = (c) => collection(db, 'artifacts', appId, 'public', 'data', c);
@@ -106,35 +117,80 @@
                 return () => { unsubP(); unsubS(); unsubF(); unsubI(); unsubQ(); };
             }, [user]);
 
-            // Utilidades de Cálculo Financiero
             const stats = useMemo(() => {
-                const now = new Date();
-                const todayStr = now.toISOString().split('T')[0];
-                
-                const income = finances.filter(f => f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-                const expense = finances.filter(f => f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-                
-                // Ganancia Hoy
-                const todayIncome = finances.filter(f => f.date === todayStr && f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-                const todayExpense = finances.filter(f => f.date === todayStr && f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-
-                return {
-                    balance: income - expense,
-                    todayProfit: todayIncome - todayExpense,
-                    activeProjects: projects.filter(p => p.status !== 'Terminado').length,
-                    lowStock: inventory.filter(i => i.stock < 5).length
+                const inc = finances.filter(f => f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
+                const exp = finances.filter(f => f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
+                return { 
+                    balance: inc - exp, 
+                    activeProjects: projects.filter(p => p.status !== 'Terminado').length, 
+                    lowStock: inventory.filter(i => i.stock < 5).length 
                 };
             }, [finances, projects, inventory]);
 
-            const NavItem = ({ id, icon, label }) => {
-                const active = activeTab === id;
-                return (
-                    <button onClick={() => setActiveTab(id)} className={`flex flex-col md:flex-row items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl transition-all duration-300 ${active ? 'bg-amber-500 text-white shadow-xl scale-105' : 'text-slate-400 hover:bg-white'}`}>
-                        <Icon name={icon} size={18} />
-                        <span className={`text-[10px] md:text-sm font-bold tracking-tight ${active ? 'block' : 'hidden md:block'}`}>{label}</span>
-                    </button>
-                );
+            const deleteItem = async (col, id) => {
+                if(window.confirm('¿Deseas eliminar este registro de forma permanente?')) {
+                    try {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', col, id);
+                        await deleteDoc(docRef);
+                        // Limpiar selección si lo borrado estaba seleccionado
+                        if (selectedProjectId === id) setSelectedProjectId(null);
+                        if (selectedStaffId === id) setSelectedStaffId(null);
+                    } catch (err) {
+                        console.error("Error al borrar:", err);
+                    }
+                }
             };
+
+            const currentProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
+            const currentStaff = useMemo(() => staff.find(s => s.id === selectedStaffId), [staff, selectedStaffId]);
+
+            // --- FUNCIONES EXCEL ---
+            const addExcelRow = async () => {
+                if (!selectedProjectId) return;
+                const newRow = { id: Date.now(), desc: '', qty: 1, cost: 0 };
+                const updatedBreakdown = [...(currentProject.breakdown || []), newRow];
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', selectedProjectId), { breakdown: updatedBreakdown });
+            };
+
+            const updateExcelRow = async (rowId, field, value) => {
+                const updatedBreakdown = currentProject.breakdown.map(r => r.id === rowId ? { ...r, [field]: value } : r);
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', selectedProjectId), { breakdown: updatedBreakdown });
+            };
+
+            const removeExcelRow = async (rowId) => {
+                const updatedBreakdown = currentProject.breakdown.filter(r => r.id !== rowId);
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', selectedProjectId), { breakdown: updatedBreakdown });
+            };
+
+            // --- FUNCIONES EQUIPO ---
+            const handleBlockDate = async () => {
+                const date = prompt("Ingresa la fecha a bloquear (AAAA-MM-DD):");
+                if (date && selectedStaffId) {
+                    try {
+                        const staffRef = doc(db, 'artifacts', appId, 'public', 'data', 'staff', selectedStaffId);
+                        await updateDoc(staffRef, {
+                            unavailableDates: arrayUnion(date)
+                        });
+                    } catch (e) {
+                        console.error("Error bloqueando fecha:", e);
+                    }
+                }
+            };
+
+            const removeUnavailableDate = async (date) => {
+                if (selectedStaffId) {
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff', selectedStaffId), {
+                        unavailableDates: arrayRemove(date)
+                    });
+                }
+            };
+
+            const NavItem = ({ id, icon, label }) => (
+                <button onClick={() => { setActiveTab(id); setProjectTab('list'); setSelectedProjectId(null); setSelectedStaffId(null); }} className={`flex flex-col md:flex-row items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl transition-all duration-300 ${activeTab === id ? 'bg-amber-500 text-white shadow-xl scale-105' : 'text-slate-400 hover:bg-white'}`}>
+                    <Icon name={icon} size={18} />
+                    <span className={`text-[10px] md:text-sm font-bold tracking-tight ${activeTab === id ? 'block' : 'hidden md:block'}`}>{label}</span>
+                </button>
+            );
 
             const Hero = ({ title, subtitle, icon, color }) => (
                 <div className={`relative overflow-hidden rounded-[2.5rem] p-8 md:p-12 mb-10 text-white shadow-2xl ${color} animate-section`}>
@@ -147,20 +203,15 @@
                 </div>
             );
 
-            if (!user) return (
-                <div className="h-screen flex flex-col items-center justify-center">
-                    <Icon name="sun" size={48} className="text-amber-500 animate-spin" />
-                    <p className="mt-4 font-black text-slate-400 tracking-widest text-[10px]">INICIANDO ERP INTEGRAL...</p>
-                </div>
-            );
+            if (!user) return <div className="h-screen flex items-center justify-center animate-pulse text-slate-300 font-black">CONECTANDO SISTEMA...</div>;
 
             return (
                 <div className="min-h-screen pb-32 md:pb-12 md:pt-24">
-                    {/* Navegación Superior Desktop */}
+                    {/* Header Escritorio */}
                     <nav className="fixed top-0 left-0 right-0 h-24 bg-white/70 backdrop-blur-2xl border-b border-slate-100 z-50 hidden md:flex items-center justify-between px-10">
                         <div className="flex items-center gap-3">
                             <div className="bg-amber-500 p-2 rounded-xl text-white shadow-lg"><Icon name="sun" size={24} strokeWidth={2.5} /></div>
-                            <span className="text-xl font-black tracking-tighter">SOLAR<span className="text-amber-500">PRO</span></span>
+                            <span className="text-xl font-black tracking-tighter text-slate-800 uppercase">Solar<span className="text-amber-500">Pro</span></span>
                         </div>
                         <div className="flex gap-1 bg-slate-100/50 p-1.5 rounded-[1.8rem]">
                             <NavItem id="dashboard" icon="layout-dashboard" label="Panel" />
@@ -170,14 +221,14 @@
                             <NavItem id="inventory" icon="package" label="Stock" />
                             <NavItem id="quotes" icon="file-text" label="Cotizar" />
                         </div>
-                        <div className="h-10 w-10 rounded-2xl bg-slate-200 border-2 border-white"></div>
+                        <div className="h-10 w-10 rounded-2xl bg-amber-100 border-2 border-white shadow-sm flex items-center justify-center text-[10px] font-black">SIG</div>
                     </nav>
 
-                    {/* Navegación Móvil Inferior */}
+                    {/* Navegación Móvil */}
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-xl bg-white/90 backdrop-blur-2xl border border-white/40 shadow-2xl rounded-[2.5rem] z-50 flex items-center justify-around p-2 md:hidden">
                         <NavItem id="dashboard" icon="layout-dashboard" label="Panel" />
                         <NavItem id="projects" icon="briefcase" label="Proy" />
-                        <NavItem id="staff" icon="users" label="Personal" />
+                        <NavItem id="staff" icon="users" label="Equipo" />
                         <NavItem id="finances" icon="dollar-sign" label="Caja" />
                         <NavItem id="quotes" icon="file-text" label="Cotizar" />
                     </nav>
@@ -187,292 +238,422 @@
                         {/* 1. DASHBOARD */}
                         {activeTab === 'dashboard' && (
                             <div className="animate-section">
-                                <Hero title="Visión General" subtitle="Resumen ejecutivo del estado de tu empresa en tiempo real." icon="zap" color="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600" />
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
-                                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-4 group-hover:bg-emerald-500 group-hover:text-white transition-all"><Icon name="trending-up" /></div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Utilidad Total</p>
-                                        <h3 className="text-4xl font-black text-slate-800 tracking-tighter">${stats.balance.toLocaleString()}</h3>
+                                <Hero title="Resumen General" subtitle="Gestión operativa y financiera centralizada para tu equipo técnico." icon="zap" color="bg-gradient-to-br from-amber-500 via-orange-500 to-rose-600" />
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
+                                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-6 transition-all group-hover:bg-emerald-500 group-hover:text-white"><Icon name="trending-up" size={28} /></div>
+                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Utilidad en Caja</p>
+                                        <h3 className="text-5xl font-black text-slate-800 tracking-tighter">${stats.balance.toLocaleString()}</h3>
                                     </div>
-                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
-                                        <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl w-fit mb-4 group-hover:bg-amber-500 group-hover:text-white transition-all"><Icon name="sun" /></div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Utilidad Hoy</p>
-                                        <h3 className="text-4xl font-black text-slate-800 tracking-tighter">${stats.todayProfit.toLocaleString()}</h3>
+                                    <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
+                                        <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-6 transition-all group-hover:bg-blue-500 group-hover:text-white"><Icon name="briefcase" size={28} /></div>
+                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Instalaciones en Curso</p>
+                                        <h3 className="text-5xl font-black text-slate-800 tracking-tighter">{stats.activeProjects}</h3>
                                     </div>
-                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
-                                        <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-4 group-hover:bg-blue-500 group-hover:text-white transition-all"><Icon name="clock" /></div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Proyectos Activos</p>
-                                        <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{stats.activeProjects}</h3>
-                                    </div>
-                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
-                                        <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl w-fit mb-4 group-hover:bg-rose-500 group-hover:text-white transition-all"><Icon name="alert-triangle" /></div>
-                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Alertas Stock</p>
-                                        <h3 className="text-4xl font-black text-slate-800 tracking-tighter">{stats.lowStock}</h3>
+                                    <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm group hover:shadow-2xl transition-all">
+                                        <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl w-fit mb-6 transition-all group-hover:bg-rose-500 group-hover:text-white"><Icon name="alert-circle" size={28} /></div>
+                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Alertas Almacén</p>
+                                        <h3 className="text-5xl font-black text-slate-800 tracking-tighter">{stats.lowStock}</h3>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* 2. GESTIÓN DE PROYECTOS */}
+                        {/* 2. PROYECTOS */}
                         {activeTab === 'projects' && (
                             <div className="animate-section">
-                                <Hero title="Proyectos y Servicios" subtitle="Control total de instalaciones. Seguimiento desde la obra hasta el cierre." icon="briefcase" color="bg-gradient-to-br from-blue-600 to-indigo-800" />
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                    <div className="lg:col-span-4">
-                                        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 sticky top-28">
-                                            <h3 className="text-xl font-black mb-6 flex items-center gap-2"><Icon name="plus-circle" className="text-blue-500" /> Nuevo Servicio</h3>
-                                            <form onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                const fd = new FormData(e.target);
-                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'projects'), {
-                                                    client: fd.get('client'),
-                                                    service: fd.get('service'),
-                                                    status: 'Pendiente',
-                                                    team: fd.get('team'),
-                                                    date: fd.get('date'),
-                                                    value: Number(fd.get('value'))
-                                                });
-                                                e.target.reset();
-                                            }} className="space-y-4">
-                                                <input name="client" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Cliente" />
-                                                <select name="service" className="w-full p-4 bg-slate-50 rounded-2xl outline-none">
-                                                    <option>Paneles Solares</option>
-                                                    <option>Calentador Solar</option>
-                                                    <option>Electricidad</option>
-                                                    <option>Aires Acondicionados</option>
-                                                </select>
-                                                <input name="team" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Técnicos asignados" />
-                                                <input name="value" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Valor Proyecto $" />
-                                                <input name="date" type="date" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
-                                                <button type="submit" className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl hover:bg-blue-700 transition-all">INICIAR PROYECTO</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                    <div className="lg:col-span-8 space-y-4">
-                                        {projects.map(p => (
-                                            <div key={p.id} className="bg-white p-6 rounded-[2rem] border border-slate-100 flex flex-col md:flex-row md:items-center justify-between group hover:shadow-xl transition-all">
-                                                <div className="flex items-center gap-6">
-                                                    <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center font-black text-2xl ${p.status === 'Terminado' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                                                        {p.client?.charAt(0)}
-                                                    </div>
-                                                    <div>
-                                                        <h4 className="font-black text-xl text-slate-800 leading-tight">{p.client}</h4>
-                                                        <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{p.service} • {p.date}</p>
-                                                        <div className="flex items-center gap-2 mt-3">
-                                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${
-                                                                p.status === 'Terminado' ? 'bg-emerald-100 text-emerald-700' : 
-                                                                p.status === 'En proceso' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
-                                                            }`}>
-                                                                {p.status}
-                                                            </span>
-                                                            <span className="text-[10px] font-bold text-slate-400"><Icon name="users" size={10} className="mr-1" /> {p.team}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-4 mt-4 md:mt-0">
-                                                    <select 
-                                                        onChange={async (e) => await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', p.id), { status: e.target.value })}
-                                                        value={p.status}
-                                                        className="text-xs font-bold bg-slate-100 p-2 rounded-xl outline-none"
-                                                    >
-                                                        <option>Pendiente</option>
-                                                        <option>En proceso</option>
-                                                        <option>Terminado</option>
-                                                    </select>
-                                                    <button onClick={() => deleteItem('projects', p.id)} className="p-3 text-slate-200 hover:text-rose-500 transition-all"><Icon name="trash-2" /></button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                                    <h2 className="text-4xl font-black text-slate-800 tracking-tight">Gestión de Obras</h2>
+                                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100">
+                                        <button onClick={() => setProjectTab('list')} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${projectTab === 'list' ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-400'}`}>LISTA</button>
+                                        <button onClick={() => setProjectTab('calendar')} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${projectTab === 'calendar' ? 'bg-amber-500 text-white shadow-lg' : 'text-slate-400'}`}>CALENDARIO</button>
                                     </div>
                                 </div>
+
+                                {projectTab === 'list' && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                        <div className="lg:col-span-4">
+                                            <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 sticky top-28">
+                                                <h3 className="text-xl font-black mb-6">Nuevo Proyecto</h3>
+                                                <form onSubmit={async (e) => {
+                                                    e.preventDefault();
+                                                    const fd = new FormData(e.target);
+                                                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'projects'), {
+                                                        client: fd.get('client'), service: fd.get('service'), 
+                                                        team: fd.get('team'), date: fd.get('date'), value: Number(fd.get('value')),
+                                                        status: 'Pendiente', breakdown: []
+                                                    });
+                                                    e.target.reset();
+                                                }} className="space-y-4">
+                                                    <input name="client" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre Cliente" />
+                                                    <select name="service" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
+                                                        <option>Paneles Solares</option>
+                                                        <option>Aires Acondicionados</option>
+                                                        <option>Calentador Solar</option>
+                                                        <option>Mantenimiento Eléctrico</option>
+                                                    </select>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Técnico Responsable</label>
+                                                        <select name="team" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700">
+                                                            <option value="">Seleccionar del equipo...</option>
+                                                            {staff.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <input name="value" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Valor Venta $" />
+                                                    <input name="date" type="date" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
+                                                    <button type="submit" className="w-full py-4 bg-slate-800 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all">PROGRAMAR INSTALACIÓN</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        <div className="lg:col-span-8 space-y-4">
+                                            {projects.map(p => (
+                                                <div key={p.id} onClick={() => { setSelectedProjectId(p.id); setProjectTab('excel'); }} className="bg-white p-6 rounded-[2.2rem] border border-slate-50 shadow-sm flex flex-col md:flex-row md:items-center justify-between group hover:shadow-2xl transition-all cursor-pointer">
+                                                    <div className="flex items-center gap-6">
+                                                        <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center font-black text-2xl">{p.client?.charAt(0)}</div>
+                                                        <div>
+                                                            <h4 className="font-black text-xl text-slate-800 leading-none mb-2">{p.client}</h4>
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{p.service} • {p.date}</p>
+                                                            <div className="flex gap-2 mt-3">
+                                                                <span className="text-[10px] font-black bg-slate-50 border border-slate-100 px-3 py-1 rounded-full text-slate-500 uppercase">{p.status}</span>
+                                                                <span className="text-[10px] font-black bg-amber-50 border border-amber-100 px-3 py-1 rounded-full text-amber-600 flex items-center gap-1 uppercase tracking-tighter"><Icon name="users" size={10} /> {p.team}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-6 self-end md:self-center mt-4 md:mt-0">
+                                                        <div className="text-right">
+                                                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Presupuesto</p>
+                                                            <p className="text-xl font-black text-slate-800">${p.value?.toLocaleString()}</p>
+                                                        </div>
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); deleteItem('projects', p.id); }} 
+                                                            className="p-3 text-slate-200 hover:text-rose-500 transition-colors bg-slate-50 rounded-xl"
+                                                        >
+                                                            <Icon name="trash-2" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {projectTab === 'calendar' && (
+                                    <div className="bg-white p-8 rounded-[3rem] border shadow-2xl animate-section">
+                                        <div className="flex justify-between items-center mb-10">
+                                            <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3"><Icon name="calendar" className="text-amber-500" /> Cronograma Global</h3>
+                                            <span className="text-sm font-black text-slate-400 uppercase tracking-widest">{new Date().toLocaleString('es-ES', { month: 'long', year: 'numeric' })}</span>
+                                        </div>
+                                        <div className="calendar-grid gap-3">
+                                            {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map(d => (
+                                                <div key={d} className="text-center py-3 text-[10px] font-black text-slate-300 uppercase tracking-widest">{d}</div>
+                                            ))}
+                                            {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
+                                                const dayProjects = projects.filter(p => new Date(p.date).getUTCDate() === day);
+                                                return (
+                                                    <div key={day} className={`min-h-[120px] p-3 rounded-2xl border transition-all ${dayProjects.length > 0 ? 'bg-amber-50/40 border-amber-200 shadow-sm' : 'border-slate-50 bg-slate-50/20'}`}>
+                                                        <span className="text-xs font-black text-slate-300">{day}</span>
+                                                        <div className="mt-2 space-y-2">
+                                                            {dayProjects.map(p => (
+                                                                <div key={p.id} onClick={() => { setSelectedProjectId(p.id); setProjectTab('excel'); }} className="p-2 bg-white rounded-xl shadow-sm border border-amber-100 cursor-pointer hover:scale-105 transition-all">
+                                                                    <p className="text-[10px] font-black text-slate-800 truncate">{p.client}</p>
+                                                                    <p className="text-[8px] font-bold text-amber-500 uppercase flex items-center gap-1 mt-1 truncate"><Icon name="user" size={8} /> {p.team}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {projectTab === 'excel' && currentProject && (
+                                    <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 animate-section">
+                                        <div className="flex flex-col md:flex-row justify-between items-start mb-10 gap-6">
+                                            <div>
+                                                <button onClick={() => setProjectTab('list')} className="text-slate-400 flex items-center gap-2 text-xs font-black uppercase mb-4 hover:text-amber-500 transition-all"><Icon name="arrow-left" size={14} /> Volver a lista</button>
+                                                <h3 className="text-4xl font-black text-slate-800 tracking-tight">{currentProject.client}</h3>
+                                                <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-2">{currentProject.service} • {currentProject.date}</p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 w-full md:w-auto">
+                                                <div className="text-center">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Valor Venta</p>
+                                                    <p className="text-2xl font-black text-slate-800">${currentProject.value?.toLocaleString()}</p>
+                                                </div>
+                                                <div className="text-center border-l border-slate-200">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Utilidad Estimada</p>
+                                                    <p className={`text-2xl font-black ${ (currentProject.value - (currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0)) >= 0 ? 'text-emerald-500' : 'text-rose-500' }`}>
+                                                        ${(currentProject.value - (currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0)).toLocaleString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-inner">
+                                            <table className="w-full text-left">
+                                                <thead className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+                                                    <tr>
+                                                        <th className="px-8 py-5">Descripción Partida / Material</th>
+                                                        <th className="px-8 py-5 text-center">Cant.</th>
+                                                        <th className="px-8 py-5 text-right">Costo Unit.</th>
+                                                        <th className="px-8 py-5 text-right">Subtotal</th>
+                                                        <th className="px-8 py-5"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {(currentProject.breakdown || []).map(row => (
+                                                        <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="px-8 py-4"><input value={row.desc} onChange={(e) => updateExcelRow(row.id, 'desc', e.target.value)} className="w-full bg-transparent font-bold text-slate-700 outline-none" placeholder="Ej: Paneles..." /></td>
+                                                            <td className="px-8 py-4 text-center"><input type="number" value={row.qty} onChange={(e) => updateExcelRow(row.id, 'qty', Number(e.target.value))} className="w-16 bg-transparent text-center font-bold outline-none" /></td>
+                                                            <td className="px-8 py-4 text-right font-bold text-rose-500">$<input type="number" value={row.cost} onChange={(e) => updateExcelRow(row.id, 'cost', Number(e.target.value))} className="w-24 bg-transparent text-right outline-none inline" /></td>
+                                                            <td className="px-8 py-4 text-right font-black text-slate-800 tracking-tighter">${(row.qty * row.cost).toLocaleString()}</td>
+                                                            <td className="px-8 py-4 text-center"><button onClick={() => removeExcelRow(row.id)} className="text-slate-200 hover:text-rose-500"><Icon name="x-circle" size={18} /></button></td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                                <tfoot className="bg-slate-50 font-black">
+                                                    <tr>
+                                                        <td className="px-8 py-6 text-slate-400 uppercase tracking-widest text-[10px]">COSTO TOTAL OPERATIVO</td>
+                                                        <td colSpan="2"></td>
+                                                        <td className="px-8 py-6 text-right text-2xl text-slate-800 tracking-tighter">${(currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0).toLocaleString()}</td>
+                                                        <td className="px-8 py-6 text-center"><button onClick={addExcelRow} className="bg-amber-500 text-white p-2.5 rounded-xl shadow-lg hover:scale-110 transition-all"><Icon name="plus" size={18} /></button></td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {/* 3. GESTIÓN DE PERSONAL */}
+                        {/* 3. EQUIPO / PERSONAL */}
                         {activeTab === 'staff' && (
                             <div className="animate-section">
-                                <Hero title="Gestión de Equipo" subtitle="Asigna trabajos, controla asistencias y mide la productividad de tus técnicos." icon="users" color="bg-gradient-to-br from-emerald-600 to-teal-800" />
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm flex flex-col items-center text-center">
-                                        <div className="w-20 h-20 bg-slate-100 rounded-full mb-4 flex items-center justify-center text-slate-300"><Icon name="plus" size={32} /></div>
-                                        <button onClick={async () => {
-                                            const name = prompt("Nombre del técnico:");
-                                            if(name) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff'), { name, role: 'Técnico', attendance: 0, productivity: 0 });
-                                        }} className="font-black text-sm text-emerald-600 uppercase tracking-widest">Añadir Técnico</button>
-                                    </div>
-                                    {staff.map(s => (
-                                        <div key={s.id} className="bg-white p-8 rounded-[2.5rem] border shadow-sm relative group overflow-hidden">
-                                            <div className="flex flex-col items-center text-center">
-                                                <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center font-black text-xl mb-4 group-hover:scale-110 transition-transform">{s.name?.charAt(0)}</div>
-                                                <h4 className="font-black text-slate-800 text-lg">{s.name}</h4>
-                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{s.role}</p>
-                                                
-                                                <div className="grid grid-cols-2 gap-4 w-full mt-6 pt-6 border-t border-slate-50">
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-slate-300 uppercase">Trabajos</p>
-                                                        <p className="text-xl font-black text-slate-800">{s.productivity || 0}</p>
+                                {!selectedStaffId ? (
+                                    <>
+                                        <Hero title="Gestión de Capital Humano" subtitle="Control de técnicos, contactos y disponibilidad de agenda." icon="users" color="bg-gradient-to-br from-emerald-600 to-teal-800" />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                                            <div className="bg-white p-10 rounded-[2.5rem] border border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 cursor-pointer hover:border-emerald-500 hover:text-emerald-500 transition-all group" onClick={async () => {
+                                                const n = prompt("Nombre:"); 
+                                                const t = prompt("Teléfono:");
+                                                if(n) await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff'), { name: n, phone: t || 'Sin tel.', role: 'Técnico', unavailableDates: [] });
+                                            }}>
+                                                <Icon name="user-plus" size={48} className="mb-4 group-hover:scale-110 transition-transform" />
+                                                <p className="font-black text-xs uppercase tracking-widest text-center">Registrar Técnico</p>
+                                            </div>
+                                            {staff.map(s => (
+                                                <div key={s.id} onClick={() => setSelectedStaffId(s.id)} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm relative group overflow-hidden hover:shadow-2xl transition-all cursor-pointer">
+                                                    <div className="flex flex-col items-center text-center">
+                                                        <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[1.8rem] flex items-center justify-center font-black text-3xl mb-6 shadow-inner group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500">{s.name?.charAt(0)}</div>
+                                                        <h4 className="font-black text-xl text-slate-800 leading-none">{s.name}</h4>
+                                                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-2 mb-4">{s.role}</p>
+                                                        <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs bg-emerald-50 px-4 py-1.5 rounded-full">
+                                                            <Icon name="phone" size={12} /> {s.phone || 'N/A'}
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-slate-300 uppercase">Status</p>
-                                                        <span className="text-[10px] font-black text-emerald-600">Activo</span>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); deleteItem('staff', s.id); }} 
+                                                        className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-200 hover:text-rose-500 transition-all p-2 bg-white rounded-xl shadow-sm"
+                                                    >
+                                                        <Icon name="trash-2" size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : currentStaff && (
+                                    <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 animate-section">
+                                        <div className="flex flex-col md:flex-row justify-between items-start mb-12 gap-8">
+                                            <div className="flex gap-6">
+                                                <div className="w-24 h-24 md:w-32 md:h-32 bg-emerald-100 text-emerald-700 rounded-[2.5rem] flex items-center justify-center font-black text-4xl shadow-inner">{currentStaff.name?.charAt(0)}</div>
+                                                <div>
+                                                    <button onClick={() => setSelectedStaffId(null)} className="text-slate-400 flex items-center gap-2 text-xs font-black uppercase mb-4 hover:text-emerald-500 transition-all font-black"><Icon name="arrow-left" size={14} /> Volver al equipo</button>
+                                                    <h3 className="text-4xl font-black text-slate-800 tracking-tight">{currentStaff.name}</h3>
+                                                    <div className="flex items-center gap-4 mt-3">
+                                                        <span className="text-[10px] font-black bg-emerald-50 px-3 py-1 rounded-full text-emerald-700 uppercase tracking-widest">Técnico Operativo</span>
+                                                        <a href={`tel:${currentStaff.phone}`} className="flex items-center gap-2 text-slate-400 font-bold hover:text-emerald-500 transition-all text-sm">
+                                                            <Icon name="phone-call" size={16} className="text-emerald-500" /> {currentStaff.phone}
+                                                        </a>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <button onClick={() => deleteItem('staff', s.id)} className="absolute top-4 right-4 text-slate-100 group-hover:text-rose-400 transition-all"><Icon name="trash-2" size={16} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 4. FINANZAS Y CONTROL */}
-                        {activeTab === 'finances' && (
-                            <div className="animate-section">
-                                <Hero title="Control de Caja" subtitle="Análisis de utilidades reales diarias, semanales y mensuales." icon="dollar-sign" color="bg-gradient-to-br from-emerald-500 to-teal-800" />
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                    <div className="lg:col-span-4">
-                                        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 mb-6">
-                                            <h3 className="text-xl font-black mb-6">Registro Contable</h3>
-                                            <form onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                const fd = new FormData(e.target);
-                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'finances'), {
-                                                    description: fd.get('description'),
-                                                    amount: Number(fd.get('amount')),
-                                                    type: fd.get('type'),
-                                                    date: fd.get('date')
-                                                });
-                                                e.target.reset();
-                                            }} className="space-y-4">
-                                                <input name="description" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Concepto" />
-                                                <input name="amount" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-emerald-600" placeholder="Monto $" />
-                                                <select name="type" className="w-full p-4 bg-slate-50 rounded-2xl outline-none">
-                                                    <option value="income">Ingreso (+)</option>
-                                                    <option value="expense">Gasto (-)</option>
-                                                </select>
-                                                <input name="date" type="date" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
-                                                <button type="submit" className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl shadow-xl hover:bg-emerald-700 transition-all">REGISTRAR EN CAJA</button>
-                                            </form>
-                                        </div>
-                                        <div className="bg-emerald-950 p-10 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
-                                            <p className="text-emerald-400 font-black text-xs uppercase tracking-[0.2em] mb-2">Utilidad Acumulada</p>
-                                            <h2 className="text-5xl font-black tracking-tighter tabular-nums">${stats.balance.toLocaleString()}</h2>
-                                            <Icon name="dollar-sign" size={150} className="absolute -right-10 -bottom-10 opacity-10" />
-                                        </div>
-                                    </div>
-                                    <div className="lg:col-span-8">
-                                        <div className="bg-white rounded-[2.5rem] border border-slate-50 overflow-hidden shadow-sm">
-                                            <div className="p-6 bg-slate-50/50 border-b flex justify-between items-center">
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historial Financiero Reciente</span>
+                                            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white w-full md:w-80 relative overflow-hidden shadow-2xl">
+                                                <div className="relative z-10">
+                                                    <p className="text-emerald-400 font-black text-[9px] uppercase tracking-widest mb-1">Status Actual</p>
+                                                    <h4 className="text-2xl font-black">Activo en SIG</h4>
+                                                </div>
+                                                <Icon name="shield-check" size={150} className="absolute -right-10 -bottom-10 opacity-10" />
                                             </div>
-                                            <div className="max-h-[600px] overflow-y-auto p-4 space-y-2">
-                                                {finances.sort((a,b) => b.id > a.id ? 1 : -1).map(f => (
-                                                    <div key={f.id} className="flex items-center justify-between p-5 hover:bg-slate-50 rounded-[2rem] transition-all group border border-transparent hover:border-slate-100">
-                                                        <div className="flex items-center gap-5">
-                                                            <div className={`p-3 rounded-2xl ${f.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                                <Icon name={f.type === 'income' ? 'arrow-up-right' : 'arrow-down-right'} />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                            <div className="space-y-8">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-2xl font-black text-slate-800 tracking-tight">Agenda Personal</h4>
+                                                    <button 
+                                                        onClick={handleBlockDate}
+                                                        className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-emerald-200 hover:scale-105 active:scale-95 transition-all"
+                                                    >
+                                                        BLOQUEAR FECHA
+                                                    </button>
+                                                </div>
+                                                
+                                                <div className="bg-slate-50 p-8 rounded-[2.8rem] border border-slate-100">
+                                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-6">Compromisos y Ocupación</p>
+                                                    <div className="space-y-4">
+                                                        {/* Ocupación Automática */}
+                                                        {projects.filter(p => p.team === currentStaff.name).map(p => (
+                                                            <div key={p.id} className="flex items-center justify-between p-5 bg-white rounded-2xl border border-blue-50 shadow-sm">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black"><Icon name="zap" size={18} /></div>
+                                                                    <div>
+                                                                        <p className="font-black text-slate-800 text-sm">{p.client}</p>
+                                                                        <p className="text-[10px] text-slate-400 font-bold uppercase">{p.date} • Obra Solar</p>
+                                                                    </div>
+                                                                </div>
+                                                                <span className="text-[8px] font-black bg-blue-100 text-blue-700 px-3 py-1 rounded-full uppercase">OCUPADO</span>
                                                             </div>
-                                                            <div>
-                                                                <p className="font-black text-slate-800 leading-none mb-2">{f.description}</p>
-                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{f.date}</p>
+                                                        ))}
+                                                        {/* Bloqueos Manuales */}
+                                                        {(currentStaff.unavailableDates || []).map((date, idx) => (
+                                                            <div key={idx} className="flex items-center justify-between p-5 bg-rose-50/50 rounded-2xl border border-rose-100 shadow-sm">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center font-black"><Icon name="calendar-x" size={18} /></div>
+                                                                    <div>
+                                                                        <p className="font-black text-slate-800 text-sm">Fecha Bloqueada</p>
+                                                                        <p className="text-[10px] text-slate-400 font-bold uppercase">{date} • Fuera de Servicio</p>
+                                                                    </div>
+                                                                </div>
+                                                                <button onClick={() => removeUnavailableDate(date)} className="p-2 text-rose-300 hover:text-rose-600 transition-all"><Icon name="trash-2" size={18} /></button>
                                                             </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-6">
-                                                            <span className={`text-xl font-black ${f.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                                {f.type === 'income' ? '+' : '-'}${f.amount?.toLocaleString()}
-                                                            </span>
-                                                            <button onClick={() => deleteItem('finances', f.id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-rose-500 transition-all"><Icon name="trash-2" size={18} /></button>
-                                                        </div>
+                                                        ))}
+                                                        {projects.filter(p => p.team === currentStaff.name).length === 0 && (!currentStaff.unavailableDates || currentStaff.unavailableDates.length === 0) && (
+                                                            <div className="py-20 text-center opacity-30">
+                                                                <Icon name="calendar" size={48} className="mx-auto mb-3" />
+                                                                <p className="font-black text-xs uppercase tracking-widest">Técnico sin asignaciones</p>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-8">
+                                                <h4 className="text-2xl font-black text-slate-800 tracking-tight">Rendimiento Técnico</h4>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Obras Realizadas</p>
+                                                        <h5 className="text-4xl font-black text-slate-800">{projects.filter(p => p.team === currentStaff.name && p.status === 'Terminado').length}</h5>
+                                                    </div>
+                                                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Asignaciones Activas</p>
+                                                        <h5 className="text-4xl font-black text-amber-500">{projects.filter(p => p.team === currentStaff.name && p.status !== 'Terminado').length}</h5>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-emerald-950 p-8 rounded-[2.8rem] border border-emerald-900 shadow-2xl relative overflow-hidden">
+                                                    <h5 className="font-black text-emerald-400 text-xs uppercase tracking-[0.2em] mb-4">Certificaciones</h5>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {['Panel Solar', 'A/C', 'Eléctrica'].map(skill => (
+                                                            <span key={skill} className="bg-emerald-900/50 border border-emerald-800 px-4 py-1.5 rounded-full text-[10px] font-black text-white shadow-sm">{skill}</span>
+                                                        ))}
+                                                    </div>
+                                                    <Icon name="award" size={150} className="absolute -right-10 -bottom-10 opacity-5 text-white" />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         )}
 
-                        {/* 5. INVENTARIO */}
+                        {/* 4. INVENTARIO */}
                         {activeTab === 'inventory' && (
                             <div className="animate-section">
-                                <Hero title="Almacén Técnico" subtitle="Control de materiales y herramientas asignadas por empleado." icon="package" color="bg-gradient-to-br from-slate-700 to-slate-900" />
-                                <div className="bg-white p-8 rounded-[2.5rem] border shadow-sm mb-10">
+                                <Hero title="Inventario Maestro" subtitle="Control de insumos críticos para evitar detenciones en obra." icon="package" color="bg-gradient-to-br from-slate-700 to-slate-900" />
+                                <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm mb-10">
                                     <form onSubmit={async (e) => {
                                         e.preventDefault();
                                         const fd = new FormData(e.target);
-                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), {
-                                            name: fd.get('name'), stock: Number(fd.get('stock')), type: fd.get('type')
-                                        });
+                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), { name: fd.get('name'), stock: Number(fd.get('stock')), price: Number(fd.get('price')) });
                                         e.target.reset();
-                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                                        <input name="name" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre Material/Herramienta" />
+                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                                        <input name="name" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre Material" />
                                         <input name="stock" type="number" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Stock" />
-                                        <select name="type" className="p-4 bg-slate-50 rounded-2xl outline-none">
-                                            <option>Material (Cable, Panel, etc)</option>
-                                            <option>Herramienta Eléctrica</option>
-                                            <option>Consumibles</option>
-                                        </select>
-                                        <button type="submit" className="py-4 bg-slate-800 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all">AÑADIR</button>
+                                        <input name="price" type="number" step="0.01" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Costo Unit." />
+                                        <button type="submit" className="py-4 bg-slate-800 text-white font-black rounded-2xl shadow-xl">AÑADIR STOCK</button>
                                     </form>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                                     {inventory.map(item => (
-                                        <div key={item.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 relative group hover:shadow-2xl transition-all duration-500 h-[250px] flex flex-col justify-between">
+                                        <div key={item.id} className="bg-white p-10 rounded-[2.5rem] border relative group hover:shadow-xl transition-all overflow-hidden h-[280px] flex flex-col justify-between">
                                             <div>
-                                                <div className={`absolute top-6 right-6 h-3 w-3 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500 shadow-sm'}`}></div>
-                                                <h4 className="font-black text-slate-800 text-xl mb-1">{item.name}</h4>
-                                                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{item.type}</p>
+                                                <div className={`absolute top-8 right-8 h-4 w-4 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`}></div>
+                                                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-1">Disponible</p>
+                                                <h4 className="font-black text-2xl text-slate-800 leading-tight truncate">{item.name}</h4>
                                             </div>
                                             <div className="mt-auto">
-                                                <p className="text-4xl font-black text-slate-800 tracking-tighter">{item.stock} <span className="text-[10px] text-slate-400 font-bold uppercase">Uds</span></p>
-                                                <div className="mt-4 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                                    <div className={`h-full rounded-full ${item.stock < 5 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(item.stock * 10, 100)}%` }}></div>
+                                                <p className="text-5xl font-black text-slate-800 tracking-tighter tabular-nums">{item.stock} <span className="text-xs text-slate-400 font-bold">UDS</span></p>
+                                                <div className="mt-4 w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                                    <div className={`h-full rounded-full transition-all duration-1000 ${item.stock < 5 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(item.stock * 10, 100)}%` }}></div>
                                                 </div>
                                             </div>
-                                            <button onClick={() => deleteItem('inventory', item.id)} className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 text-slate-200 hover:text-rose-500 transition-all"><Icon name="trash-2" size={16} /></button>
+                                            <button onClick={() => deleteItem('inventory', item.id)} className="absolute bottom-10 right-10 opacity-0 group-hover:opacity-100 text-slate-200 hover:text-rose-500 transition-all"><Icon name="trash-2" size={20} /></button>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
-                        {/* 6. COTIZADOR Y CATÁLOGO */}
-                        {activeTab === 'quotes' && (
+                        {/* 5. FINANZAS */}
+                        {activeTab === 'finances' && (
                             <div className="animate-section">
-                                <Hero title="Cotizador Inteligente" subtitle="Calcula presupuestos rápidos basándote en tu catálogo de servicios." icon="file-text" color="bg-gradient-to-br from-indigo-500 to-purple-700" />
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-50">
-                                        <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><Icon name="calculator" className="text-indigo-500" /> Generador de Presupuesto</h3>
-                                        <div className="space-y-6">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-transparent hover:border-indigo-500 transition-all cursor-pointer">
-                                                    <Icon name="sun" className="text-amber-500 mb-2" />
-                                                    <p className="font-black text-xs uppercase tracking-widest text-slate-500">Solar</p>
-                                                </div>
-                                                <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-transparent hover:border-indigo-500 transition-all cursor-pointer">
-                                                    <Icon name="wind" className="text-blue-500 mb-2" />
-                                                    <p className="font-black text-xs uppercase tracking-widest text-slate-500">Aire A/C</p>
-                                                </div>
-                                            </div>
-                                            <div className="space-y-4">
-                                                <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre del Cliente" />
-                                                <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Costo de Materiales $" />
-                                                <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Mano de Obra Estimada $" />
-                                                <div className="p-6 bg-indigo-50 rounded-2xl border-2 border-dashed border-indigo-200">
-                                                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1 text-center">Utilidad Recomendada (30%)</p>
-                                                    <p className="text-2xl font-black text-indigo-600 text-center tracking-tighter">Sugerencia de Venta: $...</p>
-                                                </div>
-                                                <button className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 transition-all">GENERAR Y GUARDAR PDF</button>
-                                            </div>
+                                <Hero title="Caja y Resultados" subtitle="Control exhaustivo de ingresos y egresos operativos." icon="dollar-sign" color="bg-gradient-to-br from-emerald-500 to-teal-800" />
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                                    <div className="lg:col-span-4 space-y-6">
+                                        <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border">
+                                            <h3 className="text-xl font-black mb-8 text-slate-800 tracking-tight">Nueva Transacción</h3>
+                                            <form onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const fd = new FormData(e.target);
+                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'finances'), { description: fd.get('description'), amount: Number(fd.get('amount')), type: fd.get('type'), date: new Date().toISOString().split('T')[0] });
+                                                e.target.reset();
+                                            }} className="space-y-4">
+                                                <input name="description" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Concepto" />
+                                                <input name="amount" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-emerald-600 text-lg" placeholder="Monto $" />
+                                                <select name="type" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-600">
+                                                    <option value="income">Ingreso (+)</option>
+                                                    <option value="expense">Gasto (-)</option>
+                                                </select>
+                                                <button type="submit" className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95">GUARDAR REGISTRO</button>
+                                            </form>
+                                        </div>
+                                        <div className="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden">
+                                            <p className="text-emerald-400 font-black text-[10px] uppercase tracking-[0.3em] mb-2">Utilidad Acumulada</p>
+                                            <h2 className="text-5xl font-black tracking-tighter tabular-nums">${stats.balance.toLocaleString()}</h2>
+                                            <Icon name="dollar-sign" size={200} className="absolute -right-20 -bottom-20 opacity-5" />
                                         </div>
                                     </div>
-                                    <div className="bg-white p-10 rounded-[3rem] border border-slate-50">
-                                        <h3 className="text-2xl font-black mb-8">Servicios Guardados</h3>
-                                        <div className="space-y-4">
-                                            {['Panel Solar 550W Inst.', 'Mantenimiento A/C', 'Instalación Boiler Solar'].map((s, i) => (
-                                                <div key={i} className="p-6 bg-slate-50 rounded-3xl flex items-center justify-between group hover:bg-indigo-50 transition-all">
-                                                    <span className="font-black text-slate-800">{s}</span>
-                                                    <button className="p-2 bg-white rounded-xl shadow-sm group-hover:bg-indigo-600 group-hover:text-white transition-all"><Icon name="plus" size={16}/></button>
+                                    <div className="lg:col-span-8 bg-white rounded-[3rem] border shadow-sm overflow-hidden">
+                                        <div className="p-8 border-b bg-slate-50/50 flex justify-between items-center">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Historial de Caja</span>
+                                        </div>
+                                        <div className="max-h-[600px] overflow-y-auto divide-y divide-slate-100">
+                                            {finances.sort((a,b) => b.id > a.id ? 1 : -1).map(f => (
+                                                <div key={f.id} className="flex items-center justify-between p-8 hover:bg-slate-50/50 transition-all group">
+                                                    <div className="flex items-center gap-6">
+                                                        <div className={`p-4 rounded-2xl shadow-sm ${f.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                            <Icon name={f.type === 'income' ? 'arrow-up-right' : 'arrow-down-right'} strokeWidth={3} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-black text-xl text-slate-800 mb-1 leading-none">{f.description}</p>
+                                                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{f.date}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-8">
+                                                        <span className={`text-2xl font-black tabular-nums ${f.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                            {f.type === 'income' ? '+' : '-'}${f.amount?.toLocaleString()}
+                                                        </span>
+                                                        <button onClick={() => deleteItem('finances', f.id)} className="p-3 text-slate-100 group-hover:text-rose-300 transition-all hover:bg-white hover:shadow-md rounded-xl"><Icon name="trash-2" size={20} /></button>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -481,10 +662,38 @@
                             </div>
                         )}
 
+                        {/* 6. COTIZADOR */}
+                        {activeTab === 'quotes' && (
+                            <div className="animate-section">
+                                <Hero title="Cotizador Maestro" subtitle="Genera presupuestos precisos basados en el mercado actual." icon="file-text" color="bg-gradient-to-br from-indigo-500 to-purple-800" />
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                    <div className="bg-white p-12 rounded-[3rem] shadow-xl border">
+                                        <h3 className="text-2xl font-black mb-10 flex items-center gap-3 tracking-tight"><Icon name="calculator" className="text-indigo-500" /> Nuevo Presupuesto</h3>
+                                        <div className="space-y-6">
+                                            <input className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-medium" placeholder="Nombre Prospecto" />
+                                            <div className="grid grid-cols-2 gap-6">
+                                                <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Costo Equipos $" />
+                                                <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Costo Instalación $" />
+                                            </div>
+                                            <div className="p-8 bg-indigo-50 rounded-[2rem] border-2 border-dashed border-indigo-200 text-center">
+                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2">Utilidad Estimada Sugerida (30%)</p>
+                                                <p className="text-3xl font-black text-indigo-700 tracking-tighter">Cálculo pendiente...</p>
+                                            </div>
+                                            <button className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 transition-all uppercase tracking-widest text-[10px]">GENERAR DOCUMENTO DE VENTA</button>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-12 rounded-[3rem] border border-slate-50 shadow-sm text-center py-24 opacity-40">
+                                        <Icon name="archive" size={48} className="mx-auto mb-4" />
+                                        <p className="font-black text-xs uppercase tracking-widest">Servicios guardados próximamente</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                     </main>
-                    
-                    <footer className="max-w-7xl mx-auto px-10 pb-10 text-center text-slate-300 font-bold uppercase tracking-[0.5em] text-[8px]">
-                        Solar Manager Pro - Sistema Integral de Gestión Corporativa
+
+                    <footer className="max-w-7xl mx-auto px-10 pb-20 text-center opacity-30">
+                        <p className="font-black text-[8px] uppercase tracking-[0.5em] text-slate-400">Solar Manager Pro v6.5 • Cloud ERP System</p>
                     </footer>
                 </div>
             );
