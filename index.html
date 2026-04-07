@@ -49,6 +49,9 @@
 
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        
+        .safe-top { padding-top: env(safe-area-inset-top); }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
 <body class="bg-solar-mesh min-h-screen selection:bg-amber-100 overflow-x-hidden">
@@ -124,13 +127,14 @@
             const [selectedProjectId, setSelectedProjectId] = useState(null);
             const [selectedStaffId, setSelectedStaffId] = useState(null);
             
-            // Datos
+            // Colecciones de Datos Reales en Firebase
             const [projects, setProjects] = useState([]);
+            const [clients, setClients] = useState([]);
             const [staff, setStaff] = useState([]);
             const [finances, setFinances] = useState([]);
             const [inventory, setInventory] = useState([]);
 
-            // Estado del formulario de nueva obra
+            // Estado de validación de agenda
             const [formDate, setFormDate] = useState('');
             const [formConflict, setFormConflict] = useState(null);
 
@@ -144,17 +148,18 @@
                 return () => unsubscribe();
             }, []);
 
-            // Real-time Listeners
+            // Real-time Listeners para todas las tablas
             useEffect(() => {
                 if (!isAuthReady || !user) return;
                 const path = (c) => collection(db, 'artifacts', appId, 'public', 'data', c);
                 
                 const unsubP = onSnapshot(path('projects'), s => setProjects(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const unsubC = onSnapshot(path('clients'), s => setClients(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 const unsubS = onSnapshot(path('staff'), s => setStaff(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 const unsubF = onSnapshot(path('finances'), s => setFinances(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 const unsubI = onSnapshot(path('inventory'), s => setInventory(s.docs.map(d => ({ id: d.id, ...d.data() }))));
                 
-                return () => { unsubP(); unsubS(); unsubF(); unsubI(); };
+                return () => { unsubP(); unsubC(); unsubS(); unsubF(); unsubI(); };
             }, [isAuthReady, user]);
 
             const stats = useMemo(() => {
@@ -183,13 +188,11 @@
             const currentProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
             const currentStaff = useMemo(() => staff.find(s => s.id === selectedStaffId), [staff, selectedStaffId]);
 
-            // --- LÓGICA DE FILTRADO DE TÉCNICOS DISPONIBLES ---
+            // --- LÓGICA DE AGENDA ---
             const availableStaffForDate = useMemo(() => {
                 if (!formDate) return staff;
                 return staff.filter(s => {
-                    // 1. Revisar bloqueos manuales
                     const isManuallyBlocked = (s.unavailableDates || []).includes(formDate);
-                    // 2. Revisar proyectos existentes ese día
                     const hasProject = projects.some(p => p.team === s.name && p.date === formDate);
                     return !isManuallyBlocked && !hasProject;
                 });
@@ -214,7 +217,7 @@
                     <div className="w-16 h-16 bg-amber-500 rounded-3xl flex items-center justify-center shadow-2xl animate-bounce">
                         <Icon name="sun" size={32} className="text-white" strokeWidth={3} />
                     </div>
-                    <p className="mt-6 font-black text-slate-400 tracking-[0.2em] text-[10px] uppercase">SolarPro SIG v7.6</p>
+                    <p className="mt-6 font-black text-slate-400 tracking-[0.2em] text-[10px] uppercase">SolarPro SIG v7.7</p>
                 </div>
             );
 
@@ -226,23 +229,24 @@
                             <div className="bg-amber-500 p-2 rounded-xl text-white shadow-lg"><Icon name="sun" size={20} strokeWidth={2.5} /></div>
                             <span className="text-lg font-black tracking-tighter text-slate-800 uppercase">Solar<span className="text-amber-500">Pro</span></span>
                         </div>
-                        <div className="flex gap-1 bg-slate-200/30 p-1 rounded-2xl">
+                        <div className="flex gap-1 bg-slate-200/30 p-1 rounded-2xl overflow-x-auto">
                             <NavItem id="dashboard" icon="layout-dashboard" label="Panel" activeTab={activeTab} onClick={handleTabClick} />
+                            <NavItem id="clients" icon="user-check" label="Clientes" activeTab={activeTab} onClick={handleTabClick} />
                             <NavItem id="projects" icon="briefcase" label="Obras" activeTab={activeTab} onClick={handleTabClick} />
                             <NavItem id="staff" icon="users" label="Equipo" activeTab={activeTab} onClick={handleTabClick} />
                             <NavItem id="inventory" icon="package" label="Stock" activeTab={activeTab} onClick={handleTabClick} />
                             <NavItem id="finances" icon="dollar-sign" label="Caja" activeTab={activeTab} onClick={handleTabClick} />
                         </div>
-                        <div className="h-8 w-8 rounded-xl bg-amber-100 border border-white shadow-sm flex items-center justify-center text-[10px] font-black text-amber-600 tracking-tighter">SIG</div>
+                        <div className="h-8 w-8 rounded-xl bg-amber-100 border border-white shadow-sm flex items-center justify-center text-[8px] font-black text-amber-600">ERP</div>
                     </nav>
 
                     {/* Navegación Móvil */}
                     <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-3xl border border-white/40 shadow-2xl rounded-[2.5rem] z-50 flex items-center justify-around p-2 md:hidden">
-                        <NavItem id="dashboard" icon="layout-dashboard" label="Inicio" activeTab={activeTab} onClick={handleTabClick} />
+                        <NavItem id="dashboard" icon="layout-dashboard" label="Panel" activeTab={activeTab} onClick={handleTabClick} />
+                        <NavItem id="clients" icon="user-check" label="Clientes" activeTab={activeTab} onClick={handleTabClick} />
                         <NavItem id="projects" icon="briefcase" label="Obras" activeTab={activeTab} onClick={handleTabClick} />
                         <NavItem id="staff" icon="users" label="Equipo" activeTab={activeTab} onClick={handleTabClick} />
                         <NavItem id="finances" icon="dollar-sign" label="Caja" activeTab={activeTab} onClick={handleTabClick} />
-                        <NavItem id="inventory" icon="package" label="Stock" activeTab={activeTab} onClick={handleTabClick} />
                     </nav>
 
                     <main className="max-w-7xl mx-auto px-4 md:px-6 py-4">
@@ -250,34 +254,76 @@
                         {/* --- 1. DASHBOARD --- */}
                         {activeTab === 'dashboard' && (
                             <div className="animate-section space-y-6">
-                                <Hero title="Panel de Control" subtitle="Resumen ejecutivo del estado de tu empresa y personal asignado." icon="zap" color="bg-gradient-to-br from-slate-800 to-slate-950" />
+                                <Hero title="Panel Corporativo" subtitle="Indicadores clave de rendimiento operativo y financiero." icon="zap" color="bg-gradient-to-br from-slate-800 to-slate-950" />
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm hover:shadow-xl transition-all group">
-                                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-6"><Icon name="trending-up" size={28} /></div>
+                                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-6 group-hover:bg-emerald-500 group-hover:text-white transition-all"><Icon name="trending-up" size={28} /></div>
                                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Caja SIG</p>
                                         <h3 className="text-5xl font-black text-slate-800 tracking-tighter">${stats.balance.toLocaleString()}</h3>
                                     </div>
                                     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm hover:shadow-xl transition-all group">
-                                        <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-6"><Icon name="calendar" size={28} /></div>
+                                        <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-6 group-hover:bg-blue-500 group-hover:text-white transition-all"><Icon name="briefcase" size={28} /></div>
                                         <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Obras Activas</p>
                                         <h3 className="text-5xl font-black text-slate-800 tracking-tighter">{stats.active}</h3>
                                     </div>
                                     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm hover:shadow-xl transition-all group">
-                                        <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl w-fit mb-6"><Icon name="alert-circle" size={28} /></div>
-                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Stock Bajo</p>
+                                        <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl w-fit mb-6 group-hover:bg-rose-500 group-hover:text-white transition-all"><Icon name="alert-circle" size={28} /></div>
+                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Stock Crítico</p>
                                         <h3 className="text-5xl font-black text-slate-800 tracking-tighter">{stats.low}</h3>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* --- 2. PROYECTOS / OBRAS --- */}
+                        {/* --- 2. CLIENTES (NUEVO) --- */}
+                        {activeTab === 'clients' && (
+                            <div className="animate-section">
+                                <Hero title="Directorio de Clientes" subtitle="Registro centralizado de contactos y ubicación de instalaciones." icon="user-check" color="bg-gradient-to-br from-indigo-600 to-purple-800" />
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                    <div className="lg:col-span-4">
+                                        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 sticky top-24">
+                                            <h3 className="text-xl font-black mb-6 flex items-center gap-3"><Icon name="user-plus" className="text-indigo-500" /> Nuevo Cliente</h3>
+                                            <form onSubmit={async (e) => {
+                                                e.preventDefault();
+                                                const fd = new FormData(e.target);
+                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'clients'), {
+                                                    name: fd.get('name'), phone: fd.get('phone'), address: fd.get('address')
+                                                });
+                                                e.target.reset();
+                                            }} className="space-y-4">
+                                                <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre completo" />
+                                                <input name="phone" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Teléfono" />
+                                                <input name="address" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Dirección Fiscal/Instalación" />
+                                                <button type="submit" className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 transition-all">REGISTRAR</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                    <div className="lg:col-span-8 space-y-4">
+                                        {clients.map(c => (
+                                            <div key={c.id} className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm flex flex-col md:flex-row md:items-center justify-between group hover:shadow-xl transition-all">
+                                                <div className="flex items-center gap-6">
+                                                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center font-black text-2xl">{c.name?.charAt(0)}</div>
+                                                    <div>
+                                                        <h4 className="font-black text-xl text-slate-800 leading-none mb-1">{c.name}</h4>
+                                                        <p className="text-xs font-bold text-slate-400">{c.address}</p>
+                                                        <div className="mt-2 flex items-center gap-2 text-indigo-600 font-bold text-[10px] uppercase tracking-widest"><Icon name="phone" size={10}/> {c.phone}</div>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => deleteItem('clients', c.id)} className="p-3 text-slate-200 hover:text-rose-500 transition-colors bg-slate-50 rounded-xl"><Icon name="trash-2" /></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- 3. PROYECTOS / OBRAS --- */}
                         {activeTab === 'projects' && (
                             <div className="animate-section">
-                                <Hero title="Obras y Proyectos" subtitle="Planificación inteligente de instalaciones solares." icon="briefcase" color="bg-gradient-to-br from-blue-600 to-indigo-800" />
+                                <Hero title="Obras y Proyectos" subtitle="Planificación inteligente vinculando clientes y técnicos." icon="briefcase" color="bg-gradient-to-br from-blue-600 to-indigo-800" />
                                 
                                 <div className="flex justify-between items-center mb-8 px-2">
-                                    <h2 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Control</h2>
+                                    <h2 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Gestión</h2>
                                     <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100">
                                         <button onClick={() => setProjectTab('list')} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${projectTab === 'list' ? 'bg-amber-500 text-white' : 'text-slate-400'}`}>LISTA</button>
                                         <button onClick={() => setProjectTab('calendar')} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${projectTab === 'calendar' ? 'bg-amber-500 text-white' : 'text-slate-400'}`}>CALENDARIO</button>
@@ -292,57 +338,43 @@
                                                 <form onSubmit={async (e) => {
                                                     e.preventDefault();
                                                     const fd = new FormData(e.target);
-                                                    const selectedTech = fd.get('team');
-                                                    const selectedDate = fd.get('date');
-
-                                                    // Validación final de seguridad
-                                                    const isStillAvailable = availableStaffForDate.some(s => s.name === selectedTech);
-                                                    if (!isStillAvailable) {
-                                                        setFormConflict("Este técnico se acaba de ocupar o bloquear en esa fecha.");
-                                                        return;
-                                                    }
+                                                    const clientName = fd.get('client');
+                                                    const techName = fd.get('team');
+                                                    const selDate = fd.get('date');
 
                                                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'projects'), {
-                                                        client: fd.get('client'), service: fd.get('service'), team: selectedTech, 
-                                                        date: selectedDate, value: Number(fd.get('value')), status: 'Pendiente', breakdown: []
+                                                        client: clientName, service: fd.get('service'), team: techName, 
+                                                        date: selDate, value: Number(fd.get('value')), status: 'Pendiente', breakdown: []
                                                     });
                                                     e.target.reset();
                                                     setFormDate('');
-                                                    setFormConflict(null);
                                                 }} className="space-y-4">
-                                                    <input name="client" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre del Cliente" />
+                                                    <div className="space-y-1">
+                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Seleccionar Cliente</label>
+                                                        <select name="client" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
+                                                            <option value="">Buscar en Directorio...</option>
+                                                            {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    
                                                     <select name="service" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
-                                                        <option>Paneles Solares</option><option>Calentador Solar</option><option>Instalación Eléctrica</option>
+                                                        <option>Paneles Solares</option><option>Calentador Solar</option><option>Mantenimiento Eléctrico</option>
                                                     </select>
                                                     
                                                     <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Fecha de Obra</label>
-                                                        <input name="date" type="date" required 
-                                                            onChange={(e) => {
-                                                                setFormDate(e.target.value);
-                                                                setFormConflict(null);
-                                                            }}
-                                                            className="w-full p-4 bg-slate-50 rounded-2xl outline-none" 
-                                                        />
+                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Fecha</label>
+                                                        <input name="date" type="date" required onChange={(e) => setFormDate(e.target.value)} className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
                                                     </div>
 
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Técnico Disponible</label>
-                                                        <select name="team" required disabled={!formDate} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold disabled:opacity-50">
-                                                            <option value="">{formDate ? "Seleccionar..." : "Primero elige una fecha"}</option>
+                                                        <select name="team" required disabled={!formDate} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
+                                                            <option value="">{formDate ? "Seleccionar..." : "Elige fecha primero"}</option>
                                                             {availableStaffForDate.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
                                                         </select>
-                                                        {formDate && availableStaffForDate.length === 0 && (
-                                                            <p className="text-[9px] text-rose-500 font-bold ml-3 mt-1 uppercase">No hay técnicos disponibles este día</p>
-                                                        )}
                                                     </div>
 
-                                                    <input name="value" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Valor Venta $" />
-                                                    
-                                                    {formConflict && (
-                                                        <div className="p-3 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-bold border border-rose-100">{formConflict}</div>
-                                                    )}
-
+                                                    <input name="value" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Precio Venta $" />
                                                     <button type="submit" disabled={availableStaffForDate.length === 0} className="w-full py-4 bg-slate-800 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all disabled:opacity-30">PROGRAMAR</button>
                                                 </form>
                                             </div>
@@ -354,21 +386,19 @@
                                                         <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center font-black text-2xl group-hover:scale-110 transition-transform">{p.client?.charAt(0)}</div>
                                                         <div>
                                                             <h4 className="font-black text-xl text-slate-800 leading-none mb-1">{p.client}</h4>
-                                                            <p className="text-[10px] font-black text-slate-400 uppercase">{p.service} • {p.date}</p>
-                                                            <span className="text-[10px] font-black text-amber-600 uppercase mt-2 block flex items-center gap-1"><Icon name="user" size={10}/> {p.team}</span>
+                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{p.service} • {p.date}</p>
+                                                            <div className="flex items-center gap-2 mt-3">
+                                                                <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded-full text-slate-500 uppercase">{p.status}</span>
+                                                                <span className="text-[10px] font-black bg-amber-100 px-2 py-1 rounded-full text-amber-600 uppercase flex items-center gap-1"><Icon name="user" size={10} /> {p.team}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-6 mt-4 md:mt-0">
                                                         <div className="text-right">
-                                                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Cotizado</p>
+                                                            <p className="text-[10px] font-black text-slate-300 uppercase">Cotización</p>
                                                             <p className="text-xl font-black text-slate-800 tracking-tighter">${p.value?.toLocaleString()}</p>
                                                         </div>
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); deleteItem('projects', p.id); }} 
-                                                            className="p-3 text-slate-200 hover:text-rose-500 transition-colors bg-slate-50 rounded-xl"
-                                                        >
-                                                            <Icon name="trash-2" size={20} />
-                                                        </button>
+                                                        <button onClick={(e) => { e.stopPropagation(); deleteItem('projects', p.id); }} className="p-3 text-slate-200 hover:text-rose-500 transition-colors bg-slate-50 rounded-xl"><Icon name="trash-2" /></button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -377,7 +407,7 @@
                                 )}
 
                                 {projectTab === 'calendar' && (
-                                    <div className="bg-white p-6 md:p-10 rounded-[3rem] border shadow-2xl animate-section overflow-x-auto">
+                                    <div className="bg-white p-8 rounded-[3rem] border shadow-2xl animate-section overflow-x-auto">
                                         <div className="calendar-grid gap-2 min-w-[700px]">
                                             {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map(d => (
                                                 <div key={d} className="text-center py-3 text-[10px] font-black text-slate-300 uppercase">{d}</div>
@@ -385,7 +415,7 @@
                                             {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
                                                 const dayProjects = projects.filter(p => new Date(p.date).getUTCDate() === day);
                                                 return (
-                                                    <div key={day} className={`min-h-[120px] p-3 rounded-2xl border transition-all ${dayProjects.length > 0 ? 'bg-amber-50/50 border-amber-200 shadow-sm' : 'border-slate-50 bg-slate-50/30'}`}>
+                                                    <div key={day} className={`min-h-[120px] p-3 rounded-2xl border transition-all ${dayProjects.length > 0 ? 'bg-amber-50/50 border-amber-200 shadow-sm' : 'border-slate-50 bg-slate-50/20'}`}>
                                                         <span className="text-xs font-black text-slate-300">{day}</span>
                                                         <div className="mt-2 space-y-1">
                                                             {dayProjects.map(p => (
@@ -401,48 +431,33 @@
 
                                 {projectTab === 'excel' && currentProject && (
                                     <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 animate-section">
-                                        <button onClick={() => setProjectTab('list')} className="text-slate-400 flex items-center gap-2 text-xs font-black uppercase mb-8 hover:text-amber-500 transition-all font-black"><Icon name="arrow-left" size={14} /> Volver</button>
+                                        <button onClick={() => setProjectTab('list')} className="text-slate-400 flex items-center gap-2 text-xs font-black uppercase mb-8 hover:text-amber-500 transition-all font-black"><Icon name="arrow-left" size={14} /> Volver a lista</button>
                                         <div className="flex flex-col md:flex-row justify-between items-start mb-10 gap-6">
                                             <div>
                                                 <h3 className="text-4xl font-black text-slate-800 tracking-tight">{currentProject.client}</h3>
                                                 <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">{currentProject.service} • {currentProject.date}</p>
                                             </div>
                                             <div className="grid grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 w-full md:w-auto">
-                                                <div className="text-center">
-                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Venta</p>
-                                                    <p className="text-2xl font-black text-slate-800">${currentProject.value?.toLocaleString()}</p>
-                                                </div>
-                                                <div className="text-center border-l border-slate-200 pl-6">
-                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Utilidad</p>
-                                                    <p className={`text-2xl font-black ${ (currentProject.value - (currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0)) >= 0 ? 'text-emerald-500' : 'text-rose-500' }`}>
-                                                        ${(currentProject.value - (currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0)).toLocaleString()}
-                                                    </p>
-                                                </div>
+                                                <div className="text-center"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Valor Venta</p><p className="text-2xl font-black text-slate-800">${currentProject.value?.toLocaleString()}</p></div>
+                                                <div className="text-center border-l border-slate-200 pl-6"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Utilidad</p><p className={`text-2xl font-black ${ (currentProject.value - (currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0)) >= 0 ? 'text-emerald-500' : 'text-rose-500' }`}>${(currentProject.value - (currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0)).toLocaleString()}</p></div>
                                             </div>
                                         </div>
-
                                         <div className="overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-inner overflow-x-auto">
                                             <table className="w-full text-left min-w-[600px]">
                                                 <thead className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-                                                    <tr>
-                                                        <th className="px-8 py-5">Descripción Partida</th>
-                                                        <th className="px-8 py-5 text-center">Cant.</th>
-                                                        <th className="px-8 py-5 text-right">Costo Unit.</th>
-                                                        <th className="px-8 py-5 text-right">Subtotal</th>
-                                                        <th className="px-8 py-5"></th>
-                                                    </tr>
+                                                    <tr><th className="px-8 py-5">Descripción Partida</th><th className="px-8 py-5 text-center">Cant.</th><th className="px-8 py-5 text-right">Costo Unit.</th><th className="px-8 py-5 text-right">Subtotal</th><th className="px-8 py-5"></th></tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100">
                                                     {(currentProject.breakdown || []).map(row => (
                                                         <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                                                            <td className="px-8 py-4"><input value={row.desc} onChange={(e) => updateExcelRow(row.id, 'desc', e.target.value)} className="w-full bg-transparent font-bold text-slate-700 outline-none" placeholder="Concepto..." /></td>
-                                                            <td className="px-8 py-4 text-center"><input type="number" value={row.qty} onChange={(e) => updateExcelRow(row.id, 'qty', Number(e.target.value))} className="w-16 bg-transparent text-center font-bold outline-none" /></td>
+                                                            <td className="px-8 py-4"><input value={row.desc} onChange={(e) => updateExcelRow(row.id, 'desc', e.target.value)} className="w-full bg-transparent font-bold text-slate-700 outline-none" /></td>
+                                                            <td className="px-8 py-4 text-center"><input type="number" value={row.qty} onChange={(e) => updateExcelRow(row.id, 'qty', Number(e.target.value))} className="w-16 bg-transparent text-center font-bold" /></td>
                                                             <td className="px-8 py-4 text-right font-bold text-rose-500">$<input type="number" value={row.cost} onChange={(e) => updateExcelRow(row.id, 'cost', Number(e.target.value))} className="w-24 bg-transparent text-right outline-none inline" /></td>
                                                             <td className="px-8 py-4 text-right font-black text-slate-800">${(row.qty * row.cost).toLocaleString()}</td>
                                                             <td className="px-8 py-4 text-center"><button onClick={async () => {
                                                                 const updated = currentProject.breakdown.filter(r => r.id !== row.id);
                                                                 await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', selectedProjectId), { breakdown: updated });
-                                                            }} className="text-rose-300 hover:scale-110 transition-all"><Icon name="x-circle" size={18} /></button></td>
+                                                            }} className="text-rose-300 transition-all hover:scale-110"><Icon name="x-circle" size={18} /></button></td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -464,103 +479,73 @@
                             </div>
                         )}
 
-                        {/* --- 3. EQUIPO / PERSONAL --- */}
+                        {/* --- 4. EQUIPO / TÉCNICOS --- */}
                         {activeTab === 'staff' && (
                             <div className="animate-section">
-                                <Hero title="Capital Humano" subtitle="Gestión integral de técnicos y agenda de disponibilidad operativa." icon="users" color="bg-gradient-to-br from-emerald-600 to-teal-800" />
+                                <Hero title="Capital Humano" subtitle="Control de técnicos especialistas y agenda personalizada." icon="users" color="bg-gradient-to-br from-emerald-600 to-teal-800" />
                                 
                                 {!selectedStaffId ? (
                                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                        {/* FORMULARIO STAFF */}
                                         <div className="lg:col-span-4">
                                             <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 sticky top-24">
-                                                <h3 className="text-xl font-black mb-8 flex items-center gap-3"><Icon name="user-plus" className="text-emerald-500" /> Nuevo Registro</h3>
+                                                <h3 className="text-xl font-black mb-8 flex items-center gap-3"><Icon name="user-plus" className="text-emerald-500" /> Registro de Personal</h3>
                                                 <form onSubmit={async (e) => {
                                                     e.preventDefault();
                                                     const fd = new FormData(e.target);
                                                     await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff'), { 
-                                                        name: fd.get('name'), 
-                                                        phone: fd.get('phone') || 'N/A', 
-                                                        role: fd.get('role'), 
-                                                        unavailableDates: [] 
+                                                        name: fd.get('name'), phone: fd.get('phone'), role: fd.get('role'), unavailableDates: [] 
                                                     });
                                                     e.target.reset();
-                                                }} className="space-y-5">
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Nombre Completo</label>
-                                                        <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Ej: Roberto Sánchez" />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Teléfono Móvil</label>
-                                                        <input name="phone" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="+52 00 0000 0000" />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Cargo</label>
-                                                        <select name="role" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700">
-                                                            <option>Técnico Especialista</option>
-                                                            <option>Instalador Senior</option>
-                                                            <option>Auxiliar de Obra</option>
-                                                        </select>
-                                                    </div>
+                                                }} className="space-y-4">
+                                                    <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre completo" />
+                                                    <input name="phone" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Teléfono" />
+                                                    <select name="role" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
+                                                        <option>Técnico Especialista</option><option>Instalador Senior</option><option>Auxiliar Obra</option>
+                                                    </select>
                                                     <button type="submit" className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl shadow-xl hover:bg-emerald-700 transition-all uppercase tracking-widest text-[10px]">AÑADIR AL EQUIPO</button>
                                                 </form>
                                             </div>
                                         </div>
-
-                                        {/* LISTA STAFF */}
                                         <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
                                             {staff.map(s => (
                                                 <div key={s.id} onClick={() => setSelectedStaffId(s.id)} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm relative group hover:shadow-2xl transition-all cursor-pointer overflow-hidden flex flex-col items-center text-center">
                                                     <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[1.8rem] flex items-center justify-center font-black text-3xl mb-6 shadow-inner group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500">{s.name?.charAt(0)}</div>
-                                                    <h4 className="font-black text-xl text-slate-800 tracking-tight leading-none">{s.name}</h4>
-                                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-2">{s.role || 'Operativo'}</p>
+                                                    <h4 className="font-black text-xl text-slate-800 leading-none">{s.name}</h4>
+                                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-2">{s.role}</p>
                                                     <div className="mt-4 flex items-center gap-2 text-emerald-600 font-bold text-xs bg-emerald-50 px-4 py-1.5 rounded-full"><Icon name="phone" size={12}/> {s.phone}</div>
-                                                    <button onClick={(e) => { e.stopPropagation(); deleteItem('staff', s.id); }} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-200 hover:text-rose-500 transition-all p-2 bg-white rounded-xl shadow-sm"><Icon name="trash-2" size={16} /></button>
+                                                    <button onClick={(e) => { e.stopPropagation(); deleteItem('staff', s.id); }} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-200 hover:text-rose-500 p-2 bg-white rounded-xl shadow-sm transition-all"><Icon name="trash-2" size={16} /></button>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 ) : currentStaff && (
                                     <div className="bg-white p-6 md:p-10 rounded-[3rem] shadow-2xl border border-slate-100 animate-section">
-                                        <button onClick={() => setSelectedStaffId(null)} className="text-slate-400 flex items-center gap-2 text-xs font-black uppercase mb-8 hover:text-emerald-500 transition-all font-black"><Icon name="arrow-left" size={14} /> Equipo</button>
+                                        <button onClick={() => setSelectedStaffId(null)} className="text-slate-400 flex items-center gap-2 text-xs font-black uppercase mb-8 hover:text-emerald-500 transition-all font-black"><Icon name="arrow-left" size={14} /> Volver</button>
                                         <div className="flex flex-col md:flex-row justify-between items-start mb-10 gap-6">
-                                            <div><h3 className="text-4xl font-black text-slate-800 tracking-tighter leading-none">{currentStaff.name}</h3><p className="text-xs font-black text-emerald-500 uppercase tracking-widest mt-2">Perfil Operativo</p></div>
+                                            <div><h3 className="text-4xl font-black text-slate-800 leading-none">{currentStaff.name}</h3><p className="text-xs font-black text-emerald-500 uppercase tracking-widest mt-2">{currentStaff.role}</p></div>
                                             <button onClick={async () => {
-                                                const d = prompt("Ingresa la fecha a bloquear (AAAA-MM-DD):");
+                                                const d = prompt("Ingresa fecha ocupada (AAAA-MM-DD):");
                                                 if(d) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff', selectedStaffId), { unavailableDates: arrayUnion(d) });
                                             }} className="bg-rose-500 text-white px-8 py-3 rounded-2xl font-black shadow-lg hover:bg-rose-600 active:scale-95 transition-all w-full md:w-auto">BLOQUEAR FECHA</button>
                                         </div>
                                         <div className="bg-slate-50 p-6 md:p-8 rounded-[2.8rem] border border-slate-100">
                                             <h4 className="font-black uppercase text-xs tracking-widest text-slate-400 mb-6">Agenda Personal</h4>
                                             <div className="space-y-3">
-                                                {/* Proyectos Automáticos */}
                                                 {projects.filter(p => p.team === currentStaff.name).map(p => (
                                                     <div key={p.id} className="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm border border-blue-50">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-black"><Icon name="zap" size={16}/></div>
-                                                            <span className="font-black text-slate-800 text-sm">{p.client} - {p.service}</span>
-                                                        </div>
-                                                        <span className="text-[10px] font-black bg-blue-100 text-blue-700 px-3 py-1 rounded-full uppercase tracking-tighter">{p.date}</span>
+                                                        <span className="font-black text-slate-800 text-sm">{p.client} - {p.service}</span>
+                                                        <span className="text-[10px] font-black bg-blue-100 text-blue-700 px-3 py-1 rounded-full">{p.date}</span>
                                                     </div>
                                                 ))}
-                                                {/* Bloqueos Manuales */}
                                                 {(currentStaff.unavailableDates || []).map((date, idx) => (
                                                     <div key={idx} className="flex items-center justify-between p-5 bg-rose-50 rounded-2xl border border-rose-100 group">
-                                                        <span className="font-black text-rose-800 text-sm">BLOQUEO MANUAL</span>
+                                                        <span className="font-black text-rose-800 text-sm uppercase">Bloqueo Manual</span>
                                                         <div className="flex items-center gap-4">
                                                             <span className="text-[10px] font-black bg-rose-200 text-rose-800 px-3 py-1 rounded-full">{date}</span>
-                                                            <button onClick={async () => {
-                                                                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff', selectedStaffId), { unavailableDates: arrayRemove(date) });
-                                                            }} className="text-rose-400 hover:text-rose-600 transition-all"><Icon name="trash-2" size={16}/></button>
+                                                            <button onClick={async () => { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff', selectedStaffId), { unavailableDates: arrayRemove(date) }); }} className="text-rose-400 transition-all hover:text-rose-600"><Icon name="trash-2" size={16}/></button>
                                                         </div>
                                                     </div>
                                                 ))}
-                                                {projects.filter(p => p.team === currentStaff.name).length === 0 && (!currentStaff.unavailableDates || currentStaff.unavailableDates.length === 0) && (
-                                                    <div className="py-20 text-center opacity-30">
-                                                        <Icon name="calendar" size={48} className="mb-3 mx-auto" />
-                                                        <p className="font-black text-xs uppercase tracking-widest">Sin asignaciones</p>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -568,10 +553,10 @@
                             </div>
                         )}
 
-                        {/* --- 4. INVENTARIO --- */}
+                        {/* --- 5. STOCK / INVENTARIO --- */}
                         {activeTab === 'inventory' && (
                             <div className="animate-section">
-                                <Hero title="Almacén Central" subtitle="Control de insumos críticos para instalaciones solares y eléctricas." icon="package" color="bg-gradient-to-br from-slate-700 to-slate-900" />
+                                <Hero title="Inventario Central" subtitle="Evita pausas en obra controlando tus materiales y herramientas críticas." icon="package" color="bg-gradient-to-br from-slate-700 to-slate-900" />
                                 <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm mb-10">
                                     <form onSubmit={async (e) => {
                                         e.preventDefault();
@@ -582,7 +567,7 @@
                                         <input name="name" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre Material" />
                                         <input name="stock" type="number" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Stock" />
                                         <input name="price" type="number" step="0.01" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Costo Unit." />
-                                        <button type="submit" className="py-4 bg-slate-800 text-white font-black rounded-2xl transition-all hover:bg-black">AÑADIR STOCK</button>
+                                        <button type="submit" className="py-4 bg-slate-800 text-white font-black rounded-2xl transition-all hover:bg-black">AÑADIR</button>
                                     </form>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -590,9 +575,9 @@
                                         <div key={item.id} className="bg-white p-10 rounded-[2.5rem] border border-slate-50 relative group h-[250px] flex flex-col justify-between transition-all hover:shadow-2xl">
                                             <div>
                                                 <div className={`absolute top-8 right-8 h-4 w-4 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500 shadow-sm'}`}></div>
-                                                <h4 className="font-black text-2xl truncate text-slate-800">{item.name}</h4>
+                                                <h4 className="font-black text-2xl truncate text-slate-800 tracking-tight">{item.name}</h4>
                                             </div>
-                                            <p className="text-5xl font-black text-slate-800 tracking-tighter tabular-nums">{item.stock} <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">UDS</span></p>
+                                            <p className="text-5xl font-black text-slate-800 tracking-tighter tabular-nums">{item.stock} <span className="text-xs text-slate-400 font-bold uppercase">UDS</span></p>
                                             <button onClick={() => deleteItem('inventory', item.id)} className="absolute bottom-10 right-10 text-slate-200 hover:text-rose-500 transition-all"><Icon name="trash-2" size={20} /></button>
                                         </div>
                                     ))}
@@ -600,13 +585,13 @@
                             </div>
                         )}
 
-                        {/* --- 5. FINANZAS --- */}
+                        {/* --- 6. FINANZAS --- */}
                         {activeTab === 'finances' && (
                             <div className="animate-section">
-                                <Hero title="Caja General" subtitle="Métricas históricas de ingresos, egresos y rentabilidad operativa." icon="dollar-sign" color="bg-gradient-to-br from-emerald-500 to-teal-800" />
+                                <Hero title="Caja General" subtitle="Métricas históricas de ingresos y rentabilidad operativa." icon="dollar-sign" color="bg-gradient-to-br from-emerald-500 to-teal-800" />
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                                     <div className="lg:col-span-4 space-y-6">
-                                        <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-50">
+                                        <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border">
                                             <form onSubmit={async (e) => {
                                                 e.preventDefault();
                                                 const fd = new FormData(e.target);
@@ -624,11 +609,11 @@
                                         <div className="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden text-center">
                                             <p className="text-emerald-400 font-black text-[10px] uppercase tracking-widest mb-2 relative z-10">Utilidad Acumulada</p>
                                             <h2 className="text-5xl font-black relative z-10 tracking-tighter tabular-nums">${stats.balance.toLocaleString()}</h2>
-                                            <Icon name="dollar-sign" size={200} className="absolute -right-20 -bottom-20 opacity-10" />
+                                            <Icon name="dollar-sign" size={200} className="absolute -right-20 -bottom-20 opacity-10 pointer-events-none" />
                                         </div>
                                     </div>
                                     <div className="lg:col-span-8 bg-white rounded-[3rem] border border-slate-50 shadow-sm overflow-hidden">
-                                        <div className="max-h-[600px] overflow-y-auto divide-y divide-slate-50">
+                                        <div className="max-h-[600px] overflow-y-auto divide-y divide-slate-100">
                                             {finances.sort((a,b) => b.id > a.id ? 1 : -1).map(f => (
                                                 <div key={f.id} className="flex items-center justify-between p-8 hover:bg-slate-50/50 group transition-all px-10">
                                                     <div className="flex items-center gap-6">
@@ -653,7 +638,7 @@
                     </main>
 
                     <footer className="max-w-7xl mx-auto px-10 pb-20 text-center opacity-30">
-                        <p className="font-black text-[8px] uppercase tracking-[0.5em] text-slate-400">Solar Manager Pro v7.6 • Intelligent Resource Planning</p>
+                        <p className="font-black text-[8px] uppercase tracking-[0.5em] text-slate-400">Solar Manager Pro v7.7 • Cloud ERP Solution</p>
                     </footer>
                 </div>
             );
