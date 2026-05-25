@@ -1,1649 +1,1458 @@
-import React, { useState, useMemo } from 'react';
-
-// --- MOCK DATA INICIAL ---
-const INITIAL_SERVICES = [
-  { id: 's1', name: 'Corte de Cabello Clásico', price: 250, cost: 50 },
-  { id: 's2', name: 'Arreglo de Barba Premium', price: 180, cost: 30 },
-  { id: 's3', name: 'Corte + Barba (Combo)', price: 380, cost: 70 },
-  { id: 's4', name: 'Coloración / Tintura', price: 500, cost: 120 },
-];
-
-const INITIAL_PRODUCTS = [
-  { id: 'p1', name: 'Cera Moldeadora Mate', price: 220, cost: 100, stock: 6 },
-  { id: 'p2', name: 'Aceite de Barba de Eucalipto', price: 190, cost: 80, stock: 2 }, // Alerta de stock bajo <= 2
-  { id: 'p3', name: 'Champú Anticaspa Profesional', price: 280, cost: 120, stock: 1 }, // Alerta de stock bajo <= 2
-  { id: 'p4', name: 'Aftershave Bálsamo Suave', price: 150, cost: 60, stock: 12 },
-];
-
-const INITIAL_BARBERS = [
-  { id: 'b1', name: 'Carlos Gómez', avatar: '✂️', active: true },
-  { id: 'b2', name: 'Mateo Rodríguez', avatar: '💈', active: true },
-  { id: 'b3', name: 'Santiago "Razor" Silva', avatar: '🧔', active: true },
-];
-
-const INITIAL_TRANSACTIONS = [
-  // Transacciones pasadas para simular el dashboard y gráficos
-  { id: 't1', type: 'ingreso', category: 'servicio', itemId: 's1', itemName: 'Corte de Cabello Clásico', amount: 250, date: '2026-05-10', barberId: 'b1' },
-  { id: 't2', type: 'ingreso', category: 'servicio', itemId: 's3', itemName: 'Corte + Barba (Combo)', amount: 380, date: '2026-05-12', barberId: 'b2' },
-  { id: 't3', type: 'ingreso', category: 'producto', itemId: 'p1', itemName: 'Cera Moldeadora Mate', amount: 220, date: '2026-05-14', barberId: null },
-  { id: 't4', type: 'gasto', category: 'operativo', itemName: 'Renta del Local', amount: 3000, date: '2026-05-01', barberId: null },
-  { id: 't5', type: 'gasto', category: 'operativo', itemName: 'Insumos de Barbería (Toallas, etc)', amount: 450, date: '2026-05-05', barberId: null },
-  { id: 't6', type: 'ingreso', category: 'servicio', itemId: 's4', itemName: 'Coloración / Tintura', amount: 500, date: '2026-05-20', barberId: 'b3' },
-  { id: 't7', type: 'ingreso', category: 'producto', itemId: 'p4', itemName: 'Aftershave Bálsamo Suave', amount: 150, date: '2026-05-22', barberId: null },
-  { id: 't8', type: 'ingreso', category: 'servicio', itemId: 's2', itemName: 'Arreglo de Barba Premium', amount: 180, date: '2026-05-24', barberId: 'b1' },
-];
-
-const INITIAL_APPOINTMENTS = [
-  { id: 'a1', clientName: 'Juan Pérez', phone: '555-0192', barberId: 'b1', serviceId: 's1', date: '2026-05-26', time: '10:00', status: 'pendiente' },
-  { id: 'a2', clientName: 'Andrés López', phone: '555-0343', barberId: 'b2', serviceId: 's3', date: '2026-05-26', time: '11:30', status: 'pendiente' },
-  { id: 'a3', clientName: 'Diego Torres', phone: '555-0988', barberId: 'b3', serviceId: 's2', date: '2026-05-27', time: '14:00', status: 'pendiente' },
-];
-
-export default function App() {
-  // --- ESTADOS DE LA APLICACIÓN ---
-  const [currentTab, setCurrentTab] = useState('dashboard'); // dashboard, citas, finanzas, inventario, barberos, cliente-booking
-  const [services, setServices] = useState(INITIAL_SERVICES);
-  const [products, setProducts] = useState(INITIAL_PRODUCTS);
-  const [barbers, setBarbers] = useState(INITIAL_BARBERS);
-  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
-  const [appointments, setAppointments] = useState(INITIAL_APPOINTMENTS);
-
-  // --- ESTADOS DE FORMULARIOS ---
-  // Transacciones manuales
-  const [txType, setTxType] = useState('ingreso');
-  const [txCategory, setTxCategory] = useState('servicio'); // servicio, producto, operativo, etc.
-  const [selectedItemId, setSelectedItemId] = useState('');
-  const [txAmount, setTxAmount] = useState('');
-  const [txItemName, setTxItemName] = useState('');
-  const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
-  const [txBarberId, setTxBarberId] = useState('');
-
-  // Edición de Utilidad/Costos Manual
-  const [editingItemType, setEditingItemType] = useState('servicio');
-  const [editingItemId, setEditingItemId] = useState('');
-  const [editPrice, setEditPrice] = useState('');
-  const [editCost, setEditCost] = useState('');
-  const [newStock, setNewStock] = useState('');
-
-  // Agendamiento Admin
-  const [adminClientName, setAdminClientName] = useState('');
-  const [adminPhone, setAdminPhone] = useState('');
-  const [adminBarber, setAdminBarber] = useState('');
-  const [adminService, setAdminService] = useState('');
-  const [adminDate, setAdminDate] = useState(new Date().toISOString().split('T')[0]);
-  const [adminTime, setAdminTime] = useState('09:00');
-
-  // Agendamiento Cliente (Landing Page Simulada)
-  const [clientStep, setClientStep] = useState(1); // 1: Inicio/Selección de Modo, 2: Datos, 3: Confirmación
-  const [clientMode, setClientMode] = useState(''); // 'barber' o 'general'
-  const [clientBarber, setClientBarber] = useState('');
-  const [clientService, setClientService] = useState('');
-  const [clientDate, setClientDate] = useState('');
-  const [clientTime, setClientTime] = useState('');
-  const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
-
-  // Proyecciones
-  const [projectionGrowth, setProjectionGrowth] = useState(10); // % de crecimiento esperado
-
-  // Mensaje de notificación temporal tipo modal/banner
-  const [notification, setNotification] = useState(null);
-
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => {
-      setNotification(null);
-    }, 5000);
-  };
-
-  // --- MANEJADORES DE ACCIONES ---
-
-  // Al seleccionar categoría en el formulario de transacciones rápidas
-  const handleTxCategoryChange = (cat) => {
-    setTxCategory(cat);
-    if (cat === 'servicio') {
-      const firstSrv = services[0];
-      if (firstSrv) {
-        setSelectedItemId(firstSrv.id);
-        setTxAmount(firstSrv.price);
-        setTxItemName(firstSrv.name);
-      }
-    } else if (cat === 'producto') {
-      const firstProd = products[0];
-      if (firstProd) {
-        setSelectedItemId(firstProd.id);
-        setTxAmount(firstProd.price);
-        setTxItemName(firstProd.name);
-      }
-    } else {
-      setSelectedItemId('');
-      setTxAmount('');
-      setTxItemName('');
-    }
-  };
-
-  // Al seleccionar un producto o servicio específico en el formulario
-  const handleItemSelectChange = (id) => {
-    setSelectedItemId(id);
-    if (txCategory === 'servicio') {
-      const srv = services.find(s => s.id === id);
-      if (srv) {
-        setTxAmount(srv.price);
-        setTxItemName(srv.name);
-      }
-    } else if (txCategory === 'producto') {
-      const prod = products.find(p => p.id === id);
-      if (prod) {
-        setTxAmount(prod.price);
-        setTxItemName(prod.name);
-      }
-    }
-  };
-
-  // Agregar Transacción Manualmente (Finanzas)
-  const handleAddTransaction = (e) => {
-    e.preventDefault();
-    let finalAmount = parseFloat(txAmount);
-    let finalItemName = txItemName;
-
-    if (txType === 'gasto' && txCategory === 'operativo') {
-      if (!finalItemName || isNaN(finalAmount)) {
-        showNotification('Por favor completa todos los campos del gasto operativo.', 'error');
-        return;
-      }
-    } else {
-      if (!selectedItemId || isNaN(finalAmount)) {
-        showNotification('Selecciona un elemento y un monto válido.', 'error');
-        return;
-      }
-    }
-
-    // Si es un producto, verificar y restar stock
-    if (txType === 'ingreso' && txCategory === 'producto') {
-      const updatedProducts = products.map(prod => {
-        if (prod.id === selectedItemId) {
-          if (prod.stock < 1) {
-            showNotification(`¡Error! El producto "${prod.name}" no tiene stock disponible.`, 'error');
-            throw new Error('Sin stock');
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elite Shave - Control Financiero & Reservas</title>
+  
+  <!-- Tailwind CSS CDN para Estilizado Premium -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              850: '#1b2330',
+              950: '#030712',
+            }
           }
-          const nextStock = prod.stock - 1;
-          if (nextStock <= 2) {
-            showNotification(`⚠️ ALERTA DE STOCK BAJO: "${prod.name}" ahora tiene solo ${nextStock} unidades disponibles.`, 'warning');
-          }
-          return { ...prod, stock: nextStock };
         }
-        return prod;
-      });
-      setProducts(updatedProducts);
+      }
     }
+  </script>
 
-    const newTx = {
-      id: 't_' + Date.now(),
-      type: txType,
-      category: txCategory,
-      itemId: selectedItemId || null,
-      itemName: finalItemName,
-      amount: finalAmount,
-      date: txDate,
-      barberId: txCategory === 'servicio' ? txBarberId : null
-    };
+  <!-- CDNs Oficiales de React 18 y ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- CDN de Babel Standalone para transpilar JSX en tiempo de ejecución -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
 
-    setTransactions([newTx, ...transactions]);
-    showNotification('Registro financiero agregado correctamente.');
-    
-    // Limpiar formulario
-    setTxAmount('');
-    setSelectedItemId('');
-    setTxItemName('');
-  };
+  <!-- Contenedor raíz donde React renderizará la App -->
+  <div id="root"></div>
 
-  // Guardar configuración manual de Costo / Utilidad / Stock
-  const handleSaveItemEdit = (e) => {
-    e.preventDefault();
-    const price = parseFloat(editPrice);
-    const cost = parseFloat(editCost);
+  <!-- Script con sintaxis JSX transpilado por Babel -->
+  <script type="text/babel">
+    const { useState, useMemo } = React;
 
-    if (isNaN(price) || isNaN(cost)) {
-      showNotification('Monto de precio y costo deben ser válidos.', 'error');
-      return;
-    }
+    // --- MOCK DATA INICIAL ---
+    const INITIAL_SERVICES = [
+      { id: 's1', name: 'Corte de Cabello Clásico', price: 250, cost: 50 },
+      { id: 's2', name: 'Arreglo de Barba Premium', price: 180, cost: 30 },
+      { id: 's3', name: 'Corte + Barba (Combo)', price: 380, cost: 70 },
+      { id: 's4', name: 'Coloración / Tintura', price: 500, cost: 120 },
+    ];
 
-    if (editingItemType === 'servicio') {
-      setServices(services.map(s => {
-        if (s.id === editingItemId) {
-          return { ...s, price, cost };
-        }
-        return s;
-      }));
-      showNotification('Servicio actualizado correctamente.');
-    } else {
-      const stockVal = parseInt(newStock);
-      if (isNaN(stockVal)) {
-        showNotification('Stock debe ser un número entero.', 'error');
-        return;
-      }
-      setProducts(products.map(p => {
-        if (p.id === editingItemId) {
-          return { ...p, price, cost, stock: stockVal };
-        }
-        return p;
-      }));
-      showNotification('Producto de inventario actualizado correctamente.');
-    }
-    
-    setEditingItemId('');
-    setEditPrice('');
-    setEditCost('');
-    setNewStock('');
-  };
+    const INITIAL_PRODUCTS = [
+      { id: 'p1', name: 'Cera Moldeadora Mate', price: 220, cost: 100, stock: 6 },
+      { id: 'p2', name: 'Aceite de Barba de Eucalipto', price: 190, cost: 80, stock: 2 }, // Alerta de stock bajo <= 2
+      { id: 'p3', name: 'Champú Anticaspa Profesional', price: 280, cost: 120, stock: 1 }, // Alerta de stock bajo <= 2
+      { id: 'p4', name: 'Aftershave Bálsamo Suave', price: 150, cost: 60, stock: 12 },
+    ];
 
-  // Iniciar edición de precios/costos
-  const startEditing = (type, item) => {
-    setEditingItemType(type);
-    setEditingItemId(item.id);
-    setEditPrice(item.price);
-    setEditCost(item.cost);
-    if (type === 'producto') {
-      setNewStock(item.stock);
-    }
-  };
+    const INITIAL_BARBERS = [
+      { id: 'b1', name: 'Carlos Gómez', avatar: '✂️', active: true },
+      { id: 'b2', name: 'Mateo Rodríguez', avatar: '💈', active: true },
+      { id: 'b3', name: 'Santiago "Razor" Silva', avatar: '🧔', active: true },
+    ];
 
-  // Agendar cita desde panel administrativo (Llamada telefónica)
-  const handleAdminAddAppointment = (e) => {
-    e.preventDefault();
-    if (!adminClientName || !adminBarber || !adminService || !adminPhone) {
-      showNotification('Por favor completa todos los campos obligatorios.', 'error');
-      return;
-    }
+    const INITIAL_TRANSACTIONS = [
+      { id: 't1', type: 'ingreso', category: 'servicio', itemId: 's1', itemName: 'Corte de Cabello Clásico', amount: 250, date: '2026-05-10', barberId: 'b1' },
+      { id: 't2', type: 'ingreso', category: 'servicio', itemId: 's3', itemName: 'Corte + Barba (Combo)', amount: 380, date: '2026-05-12', barberId: 'b2' },
+      { id: 't3', type: 'ingreso', category: 'producto', itemId: 'p1', itemName: 'Cera Moldeadora Mate', amount: 220, date: '2026-05-14', barberId: null },
+      { id: 't4', type: 'gasto', category: 'operativo', itemName: 'Renta del Local', amount: 3000, date: '2026-05-01', barberId: null },
+      { id: 't5', type: 'gasto', category: 'operativo', itemName: 'Insumos de Barbería (Toallas, etc)', amount: 450, date: '2026-05-05', barberId: null },
+      { id: 't6', type: 'ingreso', category: 'servicio', itemId: 's4', itemName: 'Coloración / Tintura', amount: 500, date: '2026-05-20', barberId: 'b3' },
+      { id: 't7', type: 'ingreso', category: 'producto', itemId: 'p4', itemName: 'Aftershave Bálsamo Suave', amount: 150, date: '2026-05-22', barberId: null },
+      { id: 't8', type: 'ingreso', category: 'servicio', itemId: 's2', itemName: 'Arreglo de Barba Premium', amount: 180, date: '2026-05-24', barberId: 'b1' },
+    ];
 
-    const newAppoint = {
-      id: 'a_' + Date.now(),
-      clientName: adminClientName,
-      phone: adminPhone,
-      barberId: adminBarber,
-      serviceId: adminService,
-      date: adminDate,
-      time: adminTime,
-      status: 'pendiente'
-    };
+    const INITIAL_APPOINTMENTS = [
+      { id: 'a1', clientName: 'Juan Pérez', phone: '555-0192', barberId: 'b1', serviceId: 's1', date: '2026-05-26', time: '10:00', status: 'pendiente' },
+      { id: 'a2', clientName: 'Andrés López', phone: '555-0343', barberId: 'b2', serviceId: 's3', date: '2026-05-26', time: '11:30', status: 'pendiente' },
+      { id: 'a3', clientName: 'Diego Torres', phone: '555-0988', barberId: 'b3', serviceId: 's2', date: '2026-05-27', time: '14:00', status: 'pendiente' },
+    ];
 
-    setAppointments([...appointments, newAppoint]);
-    showNotification(`Cita de ${adminClientName} agendada correctamente.`);
-    
-    // Reset admin form
-    setAdminClientName('');
-    setAdminPhone('');
-    setAdminBarber('');
-    setAdminService('');
-  };
+    function App() {
+      // --- ESTADOS DE LA APLICACIÓN ---
+      const [currentTab, setCurrentTab] = useState('dashboard');
+      const [services, setServices] = useState(INITIAL_SERVICES);
+      const [products, setProducts] = useState(INITIAL_PRODUCTS);
+      const [barbers, setBarbers] = useState(INITIAL_BARBERS);
+      const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
+      const [appointments, setAppointments] = useState(INITIAL_APPOINTMENTS);
 
-  // Completar cita -> Se convierte automáticamente en un ingreso para la barbería y calcula comisión del barbero
-  const handleCompleteAppointment = (id) => {
-    const app = appointments.find(a => a.id === id);
-    if (!app) return;
+      // --- ESTADOS DE FORMULARIOS ---
+      const [txType, setTxType] = useState('ingreso');
+      const [txCategory, setTxCategory] = useState('servicio');
+      const [selectedItemId, setSelectedItemId] = useState('');
+      const [txAmount, setTxAmount] = useState('');
+      const [txItemName, setTxItemName] = useState('');
+      const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
+      const [txBarberId, setTxBarberId] = useState('');
 
-    const service = services.find(s => s.id === app.serviceId);
-    if (!service) return;
+      // Edición Costo / Inventario
+      const [editingItemType, setEditingItemType] = useState('servicio');
+      const [editingItemId, setEditingItemId] = useState('');
+      const [editPrice, setEditPrice] = useState('');
+      const [editCost, setEditCost] = useState('');
+      const [newStock, setNewStock] = useState('');
 
-    // Crear la transacción de ingreso por servicio
-    const newTx = {
-      id: 't_' + Date.now(),
-      type: 'ingreso',
-      category: 'servicio',
-      itemId: service.id,
-      itemName: service.name,
-      amount: service.price,
-      date: app.date,
-      barberId: app.barberId
-    };
+      // Agenda Admin
+      const [adminClientName, setAdminClientName] = useState('');
+      const [adminPhone, setAdminPhone] = useState('');
+      const [adminBarber, setAdminBarber] = useState('');
+      const [adminService, setAdminService] = useState('');
+      const [adminDate, setAdminDate] = useState(new Date().toISOString().split('T')[0]);
+      const [adminTime, setAdminTime] = useState('09:00');
 
-    setTransactions([newTx, ...transactions]);
-    
-    // Actualizar estado de la cita
-    setAppointments(appointments.map(a => {
-      if (a.id === id) {
-        return { ...a, status: 'completada' };
-      }
-      return a;
-    }));
+      // Reservas Clientes
+      const [clientStep, setClientStep] = useState(1);
+      const [clientMode, setClientMode] = useState('');
+      const [clientBarber, setClientBarber] = useState('');
+      const [clientService, setClientService] = useState('');
+      const [clientDate, setClientDate] = useState('');
+      const [clientTime, setClientTime] = useState('');
+      const [clientName, setClientName] = useState('');
+      const [clientPhone, setClientPhone] = useState('');
 
-    showNotification(`¡Cita de ${app.clientName} completada! Ingreso de $${service.price} registrado. Comisión del 40% para el barbero aplicada.`);
-  };
+      const [projectionGrowth, setProjectionGrowth] = useState(10);
+      const [notification, setNotification] = useState(null);
 
-  // Cancelar cita
-  const handleCancelAppointment = (id) => {
-    setAppointments(appointments.map(a => {
-      if (a.id === id) {
-        return { ...a, status: 'cancelada' };
-      }
-      return a;
-    }));
-    showNotification('Cita cancelada correctamente.', 'info');
-  };
-
-  // Proceso de Reservación del Cliente (Landing Page)
-  const handleClientBooking = (e) => {
-    e.preventDefault();
-    if (clientStep === 1) {
-      if (!clientService || !clientDate || !clientTime) {
-        showNotification('Por favor escoge servicio, fecha y horario.', 'error');
-        return;
-      }
-      if (clientMode === 'barber' && !clientBarber) {
-        showNotification('Por favor selecciona un barbero.', 'error');
-        return;
-      }
-      setClientStep(2);
-    } else if (clientStep === 2) {
-      if (!clientName || !clientPhone) {
-        showNotification('Por favor escribe tu nombre y teléfono de contacto.', 'error');
-        return;
-      }
-
-      // Asignar barbero disponible de forma automática si es "general"
-      let finalBarberId = clientBarber;
-      if (clientMode === 'general') {
-        // Encontrar barbero disponible al azar o secuencialmente
-        const randomIndex = Math.floor(Math.random() * barbers.length);
-        finalBarberId = barbers[randomIndex]?.id || 'b1';
-      }
-
-      const newAppoint = {
-        id: 'a_' + Date.now(),
-        clientName,
-        phone: clientPhone,
-        barberId: finalBarberId,
-        serviceId: clientService,
-        date: clientDate,
-        time: clientTime,
-        status: 'pendiente'
+      const showNotification = (message, type = 'success') => {
+        setNotification({ message, type });
+        setTimeout(() => {
+          setNotification(null);
+        }, 5000);
       };
 
-      setAppointments([...appointments, newAppoint]);
-      setClientStep(3);
-    }
-  };
+      // --- ACCIONES ---
+      const handleTxCategoryChange = (cat) => {
+        setTxCategory(cat);
+        if (cat === 'servicio') {
+          const firstSrv = services[0];
+          if (firstSrv) {
+            setSelectedItemId(firstSrv.id);
+            setTxAmount(firstSrv.price);
+            setTxItemName(firstSrv.name);
+          }
+        } else if (cat === 'producto') {
+          const firstProd = products[0];
+          if (firstProd) {
+            setSelectedItemId(firstProd.id);
+            setTxAmount(firstProd.price);
+            setTxItemName(firstProd.name);
+          }
+        } else {
+          setSelectedItemId('');
+          setTxAmount('');
+          setTxItemName('');
+        }
+      };
 
-  const resetClientBookingForm = () => {
-    setClientStep(1);
-    setClientMode('');
-    setClientBarber('');
-    setClientService('');
-    setClientDate('');
-    setClientTime('');
-    setClientName('');
-    setClientPhone('');
-  };
-
-
-  // --- CÁLCULOS DEL PORTAFOLIO Y RENTABILIDAD ---
-
-  // Alertas de Stock Bajo
-  const lowStockAlerts = useMemo(() => {
-    return products.filter(p => p.stock <= 2);
-  }, [products]);
-
-  // Totales financieros generales
-  const financialTotals = useMemo(() => {
-    let totalRevenue = 0;
-    let totalCost = 0;
-    let totalBarberCommissions = 0;
-
-    transactions.forEach(tx => {
-      if (tx.type === 'ingreso') {
-        totalRevenue += tx.amount;
-        
-        // Calcular costo unitario
-        if (tx.category === 'servicio') {
-          const srv = services.find(s => s.id === tx.itemId);
+      const handleItemSelectChange = (id) => {
+        setSelectedItemId(id);
+        if (txCategory === 'servicio') {
+          const srv = services.find(s => s.id === id);
           if (srv) {
-            totalCost += srv.cost;
+            setTxAmount(srv.price);
+            setTxItemName(srv.name);
           }
-          // Comisión barbero: 40% del total de ventas del servicio realizado
-          totalBarberCommissions += tx.amount * 0.40;
-        } else if (tx.category === 'producto') {
-          const prod = products.find(p => p.id === tx.itemId);
+        } else if (txCategory === 'producto') {
+          const prod = products.find(p => p.id === id);
           if (prod) {
-            totalCost += prod.cost;
+            setTxAmount(prod.price);
+            setTxItemName(prod.name);
           }
         }
-      } else if (tx.type === 'gasto') {
-        totalCost += tx.amount;
-      }
-    });
-
-    // Utilidad total de negocio = Ingresos - Costos totales de productos/servicios - Gastos de operación - Comisiones pagadas a barberos
-    const netUtility = totalRevenue - totalCost - totalBarberCommissions;
-    const margin = totalRevenue > 0 ? (netUtility / totalRevenue) * 100 : 0;
-
-    return {
-      totalRevenue,
-      totalCost: totalCost + totalBarberCommissions, // los gastos e insumos + comisiones son parte del costo de operación
-      totalBarberCommissions,
-      netUtility,
-      profitMargin: margin.toFixed(1)
-    };
-  }, [transactions, services, products]);
-
-
-  // Demandas de productos y servicios (Top Ventas)
-  const itemDemands = useMemo(() => {
-    const srvCounts = {};
-    const prodCounts = {};
-
-    transactions.forEach(tx => {
-      if (tx.type === 'ingreso') {
-        if (tx.category === 'servicio') {
-          srvCounts[tx.itemName] = (srvCounts[tx.itemName] || 0) + tx.amount;
-        } else if (tx.category === 'producto') {
-          prodCounts[tx.itemName] = (prodCounts[tx.itemName] || 0) + tx.amount;
-        }
-      }
-    });
-
-    return {
-      services: Object.entries(srvCounts).map(([name, val]) => ({ name, value: val })).sort((a,b) => b.value - a.value),
-      products: Object.entries(prodCounts).map(([name, val]) => ({ name, value: val })).sort((a,b) => b.value - a.value),
-    };
-  }, [transactions]);
-
-
-  // Rendimiento de Barberos (Comisiones y Cortes)
-  const barberMetrics = useMemo(() => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    
-    // Función auxiliar para saber si es de esta semana (últimos 7 días)
-    const isThisWeek = (dateStr) => {
-      const date = new Date(dateStr);
-      const today = new Date();
-      const diffTime = Math.abs(today - date);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays <= 7;
-    };
-
-    // Mes actual
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-
-    return barbers.map(barber => {
-      const barberTxs = transactions.filter(tx => tx.barberId === barber.id && tx.category === 'servicio');
-      
-      let commissionToday = 0;
-      let commissionWeek = 0;
-      let commissionMonth = 0;
-      let commissionYear = 0;
-      let totalCuts = barberTxs.length;
-
-      barberTxs.forEach(tx => {
-        const comm = tx.amount * 0.40; // 40% de comisión para el barbero
-        
-        // Hoy
-        if (tx.date === todayStr) {
-          commissionToday += comm;
-        }
-        // Semana
-        if (isThisWeek(tx.date)) {
-          commissionWeek += comm;
-        }
-        // Mes
-        const txDateObj = new Date(tx.date);
-        if (txDateObj.getMonth() === currentMonth && txDateObj.getFullYear() === currentYear) {
-          commissionMonth += comm;
-        }
-        // Año
-        if (txDateObj.getFullYear() === currentYear) {
-          commissionYear += comm;
-        }
-      });
-
-      return {
-        ...barber,
-        totalCuts,
-        commissionToday,
-        commissionWeek,
-        commissionMonth,
-        commissionYear
       };
-    });
-  }, [transactions, barbers]);
 
+      const handleAddTransaction = (e) => {
+        e.preventDefault();
+        let finalAmount = parseFloat(txAmount);
+        let finalItemName = txItemName;
 
-  // Proyecciones Financieras
-  const projections = useMemo(() => {
-    const rev = financialTotals.totalRevenue;
-    const growthFactor = 1 + (projectionGrowth / 100);
-    const projectedRevenue = rev * growthFactor;
-    
-    // Proyección de utilidad manteniendo margen actual
-    const marginRatio = financialTotals.totalRevenue > 0 ? (financialTotals.netUtility / financialTotals.totalRevenue) : 0.40;
-    const projectedUtility = projectedRevenue * marginRatio;
+        if (txType === 'gasto' && txCategory === 'operativo') {
+          if (!finalItemName || isNaN(finalAmount)) {
+            showNotification('Completa todos los campos del gasto.', 'error');
+            return;
+          }
+        } else {
+          if (!selectedItemId || isNaN(finalAmount)) {
+            showNotification('Selecciona un elemento válido.', 'error');
+            return;
+          }
+        }
 
-    return {
-      projectedRevenue: projectedRevenue.toFixed(2),
-      projectedUtility: projectedUtility.toFixed(2),
-      increaseValue: (projectedRevenue - rev).toFixed(2)
-    };
-  }, [financialTotals, projectionGrowth]);
+        if (txType === 'ingreso' && txCategory === 'producto') {
+          try {
+            const updatedProducts = products.map(prod => {
+              if (prod.id === selectedItemId) {
+                if (prod.stock < 1) {
+                  showNotification(`¡Sin stock! "${prod.name}" no está disponible.`, 'error');
+                  throw new Error('Sin stock');
+                }
+                const nextStock = prod.stock - 1;
+                if (nextStock <= 2) {
+                  showNotification(`⚠️ STOCK BAJO: "${prod.name}" tiene solo ${nextStock} pz en almacén.`, 'warning');
+                }
+                return { ...prod, stock: nextStock };
+              }
+              return prod;
+            });
+            setProducts(updatedProducts);
+          } catch (e) {
+            return;
+          }
+        }
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      
-      {/* --- CABECERA --- */}
-      <header className="bg-slate-900 border-b border-amber-500/20 px-4 py-3 flex justify-between items-center sticky top-0 z-40">
-        <div className="flex items-center space-x-3">
-          <span className="text-3xl">💈</span>
-          <div>
-            <h1 className="text-lg font-bold text-amber-500 tracking-wider">ELITE SHAVE</h1>
-            <p className="text-xs text-slate-400">Control Financiero & Reservas</p>
-          </div>
-        </div>
+        const newTx = {
+          id: 't_' + Date.now(),
+          type: txType,
+          category: txCategory,
+          itemId: selectedItemId || null,
+          itemName: finalItemName,
+          amount: finalAmount,
+          date: txDate,
+          barberId: txCategory === 'servicio' ? txBarberId : null
+        };
 
-        {/* Acceso rápido a Vista Cliente */}
-        <button
-          onClick={() => { setCurrentTab('cliente-booking'); resetClientBookingForm(); }}
-          className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center transition-colors"
-        >
-          <span className="mr-1">🌐</span> Vista de Clientes (Link)
-        </button>
-      </header>
+        setTransactions([newTx, ...transactions]);
+        showNotification('Registro financiero agregado correctamente.');
+        setTxAmount('');
+        setSelectedItemId('');
+        setTxItemName('');
+      };
 
-      {/* --- NOTIFICACIONES / ALERTAS --- */}
-      {notification && (
-        <div className={`p-4 text-center font-semibold text-sm ${
-          notification.type === 'error' ? 'bg-red-900 text-red-100' :
-          notification.type === 'warning' ? 'bg-amber-600 text-slate-950' : 'bg-emerald-800 text-emerald-100'
-        } transition-all duration-300`}>
-          {notification.message}
-        </div>
-      )}
+      const handleSaveItemEdit = (e) => {
+        e.preventDefault();
+        const price = parseFloat(editPrice);
+        const cost = parseFloat(editCost);
 
-      {/* --- ALERTAS DE STOCK BAJO AL TOP --- */}
-      {lowStockAlerts.length > 0 && currentTab !== 'cliente-booking' && (
-        <div className="bg-red-950 border-y border-red-500/30 px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-red-400 text-xs sm:text-sm">
-            <span>🚨</span>
-            <strong className="font-bold">¡Stock Crítico!</strong>
-            <span>Los siguientes artículos tienen 2 o menos unidades en inventario:</span>
-            <div className="flex flex-wrap gap-1.5 ml-2">
-              {lowStockAlerts.map(p => (
-                <span key={p.id} className="bg-red-900 text-red-100 px-2 py-0.5 rounded text-xs font-mono font-bold">
-                  {p.name} ({p.stock} pz)
-                </span>
-              ))}
-            </div>
-          </div>
-          <button
-            onClick={() => setCurrentTab('inventario')}
-            className="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors"
-          >
-            Surtir
-          </button>
-        </div>
-      )}
+        if (isNaN(price) || isNaN(cost)) {
+          showNotification('Los montos deben ser válidos.', 'error');
+          return;
+        }
 
-      {/* --- CONTENIDO PRINCIPAL --- */}
-      <div className="flex-1 flex flex-col md:flex-row">
-        
-        {/* --- MENU LATERAL (ADMIN) --- */}
-        {currentTab !== 'cliente-booking' && (
-          <aside className="w-full md:w-64 bg-slate-900/50 border-r border-slate-800/80 p-4 space-y-2 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto">
-            <div className="hidden md:block text-xs font-semibold text-slate-500 tracking-wider uppercase mb-3">
-              Administración
-            </div>
-            
-            <button
-              onClick={() => setCurrentTab('dashboard')}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                currentTab === 'dashboard' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-              }`}
-            >
-              <span>📊</span>
-              <span>Dashboard General</span>
-            </button>
+        if (editingItemType === 'servicio') {
+          setServices(services.map(s => {
+            if (s.id === editingItemId) return { ...s, price, cost };
+            return s;
+          }));
+          showNotification('Servicio actualizado.');
+        } else {
+          const stockVal = parseInt(newStock);
+          if (isNaN(stockVal)) {
+            showNotification('Stock inválido.', 'error');
+            return;
+          }
+          setProducts(products.map(p => {
+            if (p.id === editingItemId) return { ...p, price, cost, stock: stockVal };
+            return p;
+          }));
+          showNotification('Producto actualizado.');
+        }
+        setEditingItemId('');
+        setEditPrice('');
+        setEditCost('');
+        setNewStock('');
+      };
 
-            <button
-              onClick={() => setCurrentTab('citas')}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                currentTab === 'citas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-              }`}
-            >
-              <span>📅</span>
-              <span>Agenda & Citas</span>
-            </button>
+      const startEditing = (type, item) => {
+        setEditingItemType(type);
+        setEditingItemId(item.id);
+        setEditPrice(item.price);
+        setEditCost(item.cost);
+        if (type === 'producto') {
+          setNewStock(item.stock);
+        }
+      };
 
-            <button
-              onClick={() => setCurrentTab('finanzas')}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                currentTab === 'finanzas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-              }`}
-            >
-              <span>💵</span>
-              <span>Ingresos y Gastos</span>
-            </button>
+      const handleAdminAddAppointment = (e) => {
+        e.preventDefault();
+        if (!adminClientName || !adminBarber || !adminService || !adminPhone) {
+          showNotification('Completa todos los campos.', 'error');
+          return;
+        }
 
-            <button
-              onClick={() => setCurrentTab('inventario')}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                currentTab === 'inventario' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-              }`}
-            >
-              <span>📦</span>
-              <span>Precios & Utilidad</span>
-            </button>
+        const newAppoint = {
+          id: 'a_' + Date.now(),
+          clientName: adminClientName,
+          phone: adminPhone,
+          barberId: adminBarber,
+          serviceId: adminService,
+          date: adminDate,
+          time: adminTime,
+          status: 'pendiente'
+        };
 
-            <button
-              onClick={() => setCurrentTab('barberos')}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                currentTab === 'barberos' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-              }`}
-            >
-              <span>💈</span>
-              <span>Comisiones Barberos</span>
-            </button>
-          </aside>
-        )}
+        setAppointments([...appointments, newAppoint]);
+        showNotification(`Cita de ${adminClientName} agendada correctamente.`);
+        setAdminClientName('');
+        setAdminPhone('');
+        setAdminBarber('');
+        setAdminService('');
+      };
 
-        {/* --- SECCIÓN DE VISTA ACTIVA --- */}
-        <main className="flex-1 p-4 md:p-6 overflow-y-auto max-w-7xl mx-auto w-full">
+      const handleCompleteAppointment = (id) => {
+        const app = appointments.find(a => a.id === id);
+        if (!app) return;
+
+        const service = services.find(s => s.id === app.serviceId);
+        if (!service) return;
+
+        const newTx = {
+          id: 't_' + Date.now(),
+          type: 'ingreso',
+          category: 'servicio',
+          itemId: service.id,
+          itemName: service.name,
+          amount: service.price,
+          date: app.date,
+          barberId: app.barberId
+        };
+
+        setTransactions([newTx, ...transactions]);
+        setAppointments(appointments.map(a => {
+          if (a.id === id) return { ...a, status: 'completada' };
+          return a;
+        }));
+
+        showNotification(`¡Cita completada! Ingreso registrado. 40% de comisión asignada al barbero.`);
+      };
+
+      const handleCancelAppointment = (id) => {
+        setAppointments(appointments.map(a => {
+          if (a.id === id) return { ...a, status: 'cancelada' };
+          return a;
+        }));
+        showNotification('Cita cancelada.', 'info');
+      };
+
+      const handleClientBooking = (e) => {
+        e.preventDefault();
+        if (clientStep === 1) {
+          if (!clientService || !clientDate || !clientTime) {
+            showNotification('Completa servicio, fecha y hora.', 'error');
+            return;
+          }
+          if (clientMode === 'barber' && !clientBarber) {
+            showNotification('Selecciona un barbero favorito.', 'error');
+            return;
+          }
+          setClientStep(2);
+        } else if (clientStep === 2) {
+          if (!clientName || !clientPhone) {
+            showNotification('Escribe tu nombre y celular.', 'error');
+            return;
+          }
+
+          let finalBarberId = clientBarber;
+          if (clientMode === 'general') {
+            const randomIndex = Math.floor(Math.random() * barbers.length);
+            finalBarberId = barbers[randomIndex]?.id || 'b1';
+          }
+
+          const newAppoint = {
+            id: 'a_' + Date.now(),
+            clientName,
+            phone: clientPhone,
+            barberId: finalBarberId,
+            serviceId: clientService,
+            date: clientDate,
+            time: clientTime,
+            status: 'pendiente'
+          };
+
+          setAppointments([...appointments, newAppoint]);
+          setClientStep(3);
+        }
+      };
+
+      const resetClientBookingForm = () => {
+        setClientStep(1);
+        setClientMode('');
+        setClientBarber('');
+        setClientService('');
+        setClientDate('');
+        setClientTime('');
+        setClientName('');
+        setClientPhone('');
+      };
+
+      // --- CÁLCULOS MEMOIZADOS ---
+      const lowStockAlerts = useMemo(() => products.filter(p => p.stock <= 2), [products]);
+
+      const financialTotals = useMemo(() => {
+        let totalRevenue = 0;
+        let totalCost = 0;
+        let totalBarberCommissions = 0;
+
+        transactions.forEach(tx => {
+          if (tx.type === 'ingreso') {
+            totalRevenue += tx.amount;
+            if (tx.category === 'servicio') {
+              const srv = services.find(s => s.id === tx.itemId);
+              if (srv) totalCost += srv.cost;
+              totalBarberCommissions += tx.amount * 0.40;
+            } else if (tx.category === 'producto') {
+              const prod = products.find(p => p.id === tx.itemId);
+              if (prod) totalCost += prod.cost;
+            }
+          } else if (tx.type === 'gasto') {
+            totalCost += tx.amount;
+          }
+        });
+
+        const netUtility = totalRevenue - totalCost - totalBarberCommissions;
+        const margin = totalRevenue > 0 ? (netUtility / totalRevenue) * 100 : 0;
+
+        return {
+          totalRevenue,
+          totalCost: totalCost + totalBarberCommissions,
+          totalBarberCommissions,
+          netUtility,
+          profitMargin: margin.toFixed(1)
+        };
+      }, [transactions, services, products]);
+
+      const itemDemands = useMemo(() => {
+        const srvCounts = {};
+        const prodCounts = {};
+
+        transactions.forEach(tx => {
+          if (tx.type === 'ingreso') {
+            if (tx.category === 'servicio') {
+              srvCounts[tx.itemName] = (srvCounts[tx.itemName] || 0) + tx.amount;
+            } else if (tx.category === 'producto') {
+              prodCounts[tx.itemName] = (prodCounts[tx.itemName] || 0) + tx.amount;
+            }
+          }
+        });
+
+        return {
+          services: Object.entries(srvCounts).map(([name, val]) => ({ name, value: val })).sort((a,b) => b.value - a.value),
+          products: Object.entries(prodCounts).map(([name, val]) => ({ name, value: val })).sort((a,b) => b.value - a.value),
+        };
+      }, [transactions]);
+
+      const barberMetrics = useMemo(() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const isThisWeek = (dateStr) => {
+          const date = new Date(dateStr);
+          const today = new Date();
+          return Math.ceil(Math.abs(today - date) / (1000 * 60 * 60 * 24)) <= 7;
+        };
+
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+
+        return barbers.map(barber => {
+          const barberTxs = transactions.filter(tx => tx.barberId === barber.id && tx.category === 'servicio');
+          let commissionToday = 0, commissionWeek = 0, commissionMonth = 0, commissionYear = 0;
+          let totalCuts = barberTxs.length;
+
+          barberTxs.forEach(tx => {
+            const comm = tx.amount * 0.40;
+            if (tx.date === todayStr) commissionToday += comm;
+            if (isThisWeek(tx.date)) commissionWeek += comm;
+            const txDateObj = new Date(tx.date);
+            if (txDateObj.getMonth() === currentMonth && txDateObj.getFullYear() === currentYear) commissionMonth += comm;
+            if (txDateObj.getFullYear() === currentYear) commissionYear += comm;
+          });
+
+          return {
+            ...barber,
+            totalCuts,
+            commissionToday,
+            commissionWeek,
+            commissionMonth,
+            commissionYear
+          };
+        });
+      }, [transactions, barbers]);
+
+      const projections = useMemo(() => {
+        const rev = financialTotals.totalRevenue;
+        const growthFactor = 1 + (projectionGrowth / 100);
+        const projectedRevenue = rev * growthFactor;
+        const marginRatio = financialTotals.totalRevenue > 0 ? (financialTotals.netUtility / financialTotals.totalRevenue) : 0.40;
+        const projectedUtility = projectedRevenue * marginRatio;
+
+        return {
+          projectedRevenue: projectedRevenue.toFixed(2),
+          projectedUtility: projectedUtility.toFixed(2),
+          increaseValue: (projectedRevenue - rev).toFixed(2)
+        };
+      }, [financialTotals, projectionGrowth]);
+
+      return (
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
           
-          {/* ========================================================= */}
-          {/* TAB: DASHBOARD */}
-          {/* ========================================================= */}
-          {currentTab === 'dashboard' && (
-            <div className="space-y-6">
-              
-              {/* Tarjetas Principales */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-center text-slate-400 text-xs">
-                    <span>INGRESOS BRUTOS</span>
-                    <span className="bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded text-xs">Ventas</span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalRevenue.toLocaleString()}</span>
-                  </div>
-                  <div className="mt-1 text-slate-500 text-xs">Monto acumulado actual</div>
-                </div>
-
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-center text-slate-400 text-xs">
-                    <span>COSTOS & COMISIONES</span>
-                    <span className="bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded text-xs">Egresos</span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalCost.toLocaleString()}</span>
-                  </div>
-                  <div className="mt-1 text-slate-500 text-xs">
-                    Insumos + Comisiones (40%)
-                  </div>
-                </div>
-
-                <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-center text-slate-400 text-xs">
-                    <span>UTILIDAD TOTAL</span>
-                    <span className="bg-amber-500/15 text-amber-500 px-1.5 py-0.5 rounded text-xs font-bold">Rentabilidad</span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold font-mono text-amber-500">${financialTotals.netUtility.toLocaleString()}</span>
-                  </div>
-                  <div className="mt-1 text-slate-400 text-xs font-semibold">
-                    Margen Neto: {financialTotals.profitMargin}%
-                  </div>
-                </div>
-
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex justify-between items-center text-slate-400 text-xs">
-                    <span>COMISIONES DE BARBEROS</span>
-                    <span className="bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded text-xs">40% Pago</span>
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalBarberCommissions.toLocaleString()}</span>
-                  </div>
-                  <div className="mt-1 text-slate-500 text-xs">Total repartido a barberos</div>
-                </div>
+          {/* CABECERA */}
+          <header className="bg-slate-900 border-b border-amber-500/20 px-4 py-3 flex justify-between items-center sticky top-0 z-40">
+            <div className="flex items-center space-x-3">
+              <span className="text-3xl">💈</span>
+              <div>
+                <h1 className="text-lg font-bold text-amber-500 tracking-wider">ELITE SHAVE</h1>
+                <p className="text-xs text-slate-400">Control Financiero & Reservas</p>
               </div>
+            </div>
 
-              {/* Gráficos y Demanda de Ventas */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Mayor demanda de Servicios */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Demanda de Servicios (Ingresos por Tipo)</h3>
-                  {itemDemands.services.length === 0 ? (
-                    <p className="text-xs text-slate-500">Aún no hay transacciones de servicios registradas.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {itemDemands.services.map((item, idx) => {
-                        const percent = (item.value / financialTotals.totalRevenue) * 100;
-                        return (
-                          <div key={idx} className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="font-semibold text-slate-300">{item.name}</span>
-                              <span className="font-mono text-slate-400">${item.value} ({percent.toFixed(0)}%)</span>
-                            </div>
-                            <div className="w-full bg-slate-800 rounded-full h-2">
-                              <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+            <button
+              onClick={() => { setCurrentTab('cliente-booking'); resetClientBookingForm(); }}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center transition-colors"
+            >
+              <span className="mr-1">🌐</span> Vista de Clientes (Link)
+            </button>
+          </header>
 
-                {/* Mayor demanda de Productos */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Demanda de Productos en Tienda</h3>
-                  {itemDemands.products.length === 0 ? (
-                    <p className="text-xs text-slate-500">Aún no hay ventas de productos de inventario.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {itemDemands.products.map((item, idx) => {
-                        const percent = (item.value / financialTotals.totalRevenue) * 100;
-                        return (
-                          <div key={idx} className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="font-semibold text-slate-300">{item.name}</span>
-                              <span className="font-mono text-slate-400">${item.value} ({percent.toFixed(0)}%)</span>
-                            </div>
-                            <div className="w-full bg-slate-800 rounded-full h-2">
-                              <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-              </div>
-
-              {/* Proyecciones de Venta */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-800 pb-4 mb-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Previsiones y Proyección Financiera</h3>
-                    <p className="text-xs text-slate-400">Estima tus ingresos y rentabilidad basados en el crecimiento del negocio</p>
-                  </div>
-                  <div className="mt-2 sm:mt-0 flex items-center space-x-2">
-                    <label className="text-xs text-slate-400">Crecimiento estimado:</label>
-                    <select
-                      value={projectionGrowth}
-                      onChange={(e) => setProjectionGrowth(parseInt(e.target.value))}
-                      className="bg-slate-950 border border-slate-800 text-xs rounded px-2 py-1 text-amber-500 font-bold focus:outline-none"
-                    >
-                      <option value="5">5%</option>
-                      <option value="10">10%</option>
-                      <option value="20">20%</option>
-                      <option value="35">35%</option>
-                      <option value="50">50%</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-850">
-                    <span className="text-xs text-slate-500">Ingresos Proyectados</span>
-                    <div className="text-xl font-bold font-mono text-emerald-400 mt-1">${projections.projectedRevenue}</div>
-                    <p className="text-xs text-slate-400 mt-2">Con un incremento neto de <span className="text-emerald-400 font-bold font-mono">+${projections.increaseValue}</span> sobre ventas reales.</p>
-                  </div>
-
-                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-850">
-                    <span className="text-xs text-slate-500">Utilidad Neta Proyectada</span>
-                    <div className="text-xl font-bold font-mono text-amber-500 mt-1">${projections.projectedUtility}</div>
-                    <p className="text-xs text-slate-400 mt-2">Conservando el margen operativo actual de la barbería.</p>
-                  </div>
-
-                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 flex flex-col justify-between">
-                    <div>
-                      <span className="text-xs text-slate-500">Comportamiento del Negocio</span>
-                      <p className="text-xs text-slate-300 mt-2">Llevar un balance regular mensual te ayuda a estimar costos fijos como alquiler y optimizar comisiones de barberos.</p>
-                    </div>
-                    <span className="text-[10px] text-amber-500/70 font-semibold uppercase mt-2">💡 Consejo: Promueve la venta cruzada de ceras para elevar utilidad.</span>
-                  </div>
-                </div>
-              </div>
-
+          {/* ALERTAS */}
+          {notification && (
+            <div className={`p-4 text-center font-semibold text-sm ${
+              notification.type === 'error' ? 'bg-red-900 text-red-100' :
+              notification.type === 'warning' ? 'bg-amber-600 text-slate-950' : 'bg-emerald-800 text-emerald-100'
+            } transition-all duration-300`}>
+              {notification.message}
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* TAB: CITAS & AGENDA (VISTA ADM) */}
-          {/* ========================================================= */}
-          {currentTab === 'citas' && (
-            <div className="space-y-6">
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Formulario Administrador para Agendar */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Nueva Cita (Mesa de Control / Teléfono)</h3>
-                    <p className="text-xs text-slate-400">Inserta las citas de clientes que llaman o visitan directamente el local</p>
-                  </div>
-                  
-                  <form onSubmit={handleAdminAddAppointment} className="space-y-3">
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Nombre del Cliente *</label>
-                      <input
-                        type="text"
-                        placeholder="Ej. Juan Pérez"
-                        value={adminClientName}
-                        onChange={(e) => setAdminClientName(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-amber-500"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Número Celular / Teléfono *</label>
-                      <input
-                        type="text"
-                        placeholder="Ej. 555-0101"
-                        value={adminPhone}
-                        onChange={(e) => setAdminPhone(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-amber-500"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Servicio Solicitado *</label>
-                      <select
-                        value={adminService}
-                        onChange={(e) => setAdminService(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-                        required
-                      >
-                        <option value="">Selecciona un Servicio</option>
-                        {services.map(s => (
-                          <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Barbero Asignado *</label>
-                      <select
-                        value={adminBarber}
-                        onChange={(e) => setAdminBarber(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-                        required
-                      >
-                        <option value="">Selecciona un Barbero</option>
-                        {barbers.map(b => (
-                          <option key={b.id} value={b.id}>{b.avatar} {b.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">Fecha</label>
-                        <input
-                          type="date"
-                          value={adminDate}
-                          onChange={(e) => setAdminDate(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs focus:outline-none"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">Hora</label>
-                        <input
-                          type="time"
-                          value={adminTime}
-                          onChange={(e) => setAdminTime(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs focus:outline-none"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full mt-2 bg-amber-500 text-slate-950 font-bold py-2 rounded text-xs hover:bg-amber-600 transition-colors"
-                    >
-                      Agendar en Calendario
-                    </button>
-                  </form>
-                </div>
-
-                {/* Listado de Citas / Agenda General */}
-                <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Agenda de Citas Activas</h3>
-                    <span className="text-xs bg-slate-850 px-2 py-1 rounded text-slate-400">
-                      Total: {appointments.filter(a => a.status === 'pendiente').length} pendientes
+          {lowStockAlerts.length > 0 && currentTab !== 'cliente-booking' && (
+            <div className="bg-red-950 border-y border-red-500/30 px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-red-400 text-xs sm:text-sm">
+                <span>🚨</span>
+                <strong className="font-bold">¡Stock Crítico!</strong>
+                <span>Productos con 2 o menos unidades:</span>
+                <div className="flex flex-wrap gap-1.5 ml-2">
+                  {lowStockAlerts.map(p => (
+                    <span key={p.id} className="bg-red-900 text-red-100 px-2 py-0.5 rounded text-xs font-mono font-bold">
+                      {p.name} ({p.stock} pz)
                     </span>
-                  </div>
-
-                  {appointments.length === 0 ? (
-                    <p className="text-xs text-slate-500 text-center py-8">No hay citas registradas en el sistema.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {appointments.map(app => {
-                        const service = services.find(s => s.id === app.serviceId);
-                        const barber = barbers.find(b => b.id === app.barberId);
-                        
-                        return (
-                          <div
-                            key={app.id}
-                            className={`p-3 rounded-lg border flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0 ${
-                              app.status === 'completada' ? 'bg-slate-950/40 border-slate-900 opacity-60' :
-                              app.status === 'cancelada' ? 'bg-red-950/10 border-red-950/30 opacity-50 line-through' :
-                              'bg-slate-950 border-slate-850'
-                            }`}
-                          >
-                            <div className="space-y-1">
-                              <div className="flex items-center space-x-2">
-                                <span className="font-bold text-slate-200 text-xs sm:text-sm">{app.clientName}</span>
-                                <span className="text-slate-500 text-[11px] font-mono">({app.phone})</span>
-                                {app.status === 'pendiente' && (
-                                  <span className="bg-amber-500/10 text-amber-500 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">Pendiente</span>
-                                )}
-                                {app.status === 'completada' && (
-                                  <span className="bg-emerald-500/15 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">Completada</span>
-                                )}
-                                {app.status === 'cancelada' && (
-                                  <span className="bg-red-500/15 text-red-400 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">Cancelada</span>
-                                )}
-                              </div>
-                              <div className="text-xs text-slate-400">
-                                ✂️ {service ? service.name : 'Servicio no especificado'} (${service?.price}) • 💈 Asignado a: <strong className="text-amber-500/90">{barber ? barber.name : 'Barbero general'}</strong>
-                              </div>
-                              <div className="text-[11px] text-slate-500 font-mono">
-                                Fecha: {app.date} • Hora: {app.time} hrs
-                              </div>
-                            </div>
-
-                            {app.status === 'pendiente' && (
-                              <div className="flex space-x-2 w-full sm:w-auto">
-                                <button
-                                  onClick={() => handleCompleteAppointment(app.id)}
-                                  className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-2.5 py-1.5 rounded text-xs transition-colors"
-                                >
-                                  ✓ Completar Corte
-                                </button>
-                                <button
-                                  onClick={() => handleCancelAppointment(app.id)}
-                                  className="bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-300 px-2.5 py-1.5 rounded text-xs transition-colors"
-                                >
-                                  Cancelar
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-              </div>
-
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB: FINANZAS (INGRESOS & GASTOS) */}
-          {/* ========================================================= */}
-          {currentTab === 'finanzas' && (
-            <div className="space-y-6">
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Formulario de Transacciones Rápidas */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Caja de Registro Diario</h3>
-                    <p className="text-xs text-slate-400">Agrega ingresos por productos/servicios o registra gastos fijos y variables</p>
-                  </div>
-
-                  <form onSubmit={handleAddTransaction} className="space-y-3.5">
-                    
-                    {/* Tipo de flujo */}
-                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded border border-slate-800">
-                      <button
-                        type="button"
-                        onClick={() => { setTxType('ingreso'); handleTxCategoryChange('servicio'); }}
-                        className={`py-1.5 text-xs font-bold rounded ${txType === 'ingreso' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}
-                      >
-                        Ingreso (+)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setTxType('gasto'); handleTxCategoryChange('operativo'); }}
-                        className={`py-1.5 text-xs font-bold rounded ${txType === 'gasto' ? 'bg-red-500 text-white' : 'text-slate-400'}`}
-                      >
-                        Gasto (-)
-                      </button>
-                    </div>
-
-                    {/* Categorías condicionales */}
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Categoría de Movimiento</label>
-                      <select
-                        value={txCategory}
-                        onChange={(e) => handleTxCategoryChange(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
-                      >
-                        {txType === 'ingreso' ? (
-                          <>
-                            <option value="servicio">Servicio de Barbería</option>
-                            <option value="producto">Producto de Inventario</option>
-                          </>
-                        ) : (
-                          <>
-                            <option value="operativo">Gasto Operativo (Renta, luz, etc)</option>
-                            <option value="nomina">Comisiones o Pago</option>
-                            <option value="insumos">Insumos de Barbería</option>
-                          </>
-                        )}
-                      </select>
-                    </div>
-
-                    {/* Selección dinámica según categoría */}
-                    {(txCategory === 'servicio' || txCategory === 'producto') ? (
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">
-                          Seleccionar {txCategory === 'servicio' ? 'Servicio' : 'Producto en Stock'}
-                        </label>
-                        <select
-                          value={selectedItemId}
-                          onChange={(e) => handleItemSelectChange(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
-                          required
-                        >
-                          <option value="">Selecciona una opción</option>
-                          {txCategory === 'servicio'
-                            ? services.map(s => <option key={s.id} value={s.id}>{s.name} (${s.price})</option>)
-                            : products.map(p => <option key={p.id} value={p.id} disabled={p.stock < 1}>{p.name} (${p.price} - Stock: {p.stock})</option>)
-                          }
-                        </select>
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">Descripción de Gasto / Concepto</label>
-                        <input
-                          type="text"
-                          placeholder="Ej. Pago de luz local"
-                          value={txItemName}
-                          onChange={(e) => setTxItemName(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs focus:outline-none"
-                          required
-                        />
-                      </div>
-                    )}
-
-                    {/* Barberos en caso de ser ingreso por servicio */}
-                    {txCategory === 'servicio' && txType === 'ingreso' && (
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">Barbero que Atendió</label>
-                        <select
-                          value={txBarberId}
-                          onChange={(e) => setTxBarberId(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
-                          required
-                        >
-                          <option value="">Selecciona el barbero asignado</option>
-                          {barbers.map(b => (
-                            <option key={b.id} value={b.id}>{b.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Campo de cantidad */}
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Total Monto ($) *</label>
-                      <input
-                        type="number"
-                        placeholder="0.00"
-                        value={txAmount}
-                        onChange={(e) => setTxAmount(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs font-mono focus:outline-none"
-                        required
-                        disabled={txCategory === 'servicio' || txCategory === 'producto'}
-                      />
-                      {(txCategory === 'servicio' || txCategory === 'producto') && (
-                        <p className="text-[10px] text-slate-500 mt-1">El precio se llena automáticamente según la tarifa configurada en inventario.</p>
-                      )}
-                    </div>
-
-                    {/* Fecha */}
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Fecha de Registro</label>
-                      <input
-                        type="date"
-                        value={txDate}
-                        onChange={(e) => setTxDate(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs focus:outline-none"
-                        required
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className={`w-full font-bold py-2 rounded text-xs transition-colors ${
-                        txType === 'ingreso' ? 'bg-amber-500 hover:bg-amber-600 text-slate-950' : 'bg-red-600 hover:bg-red-700 text-white'
-                      }`}
-                    >
-                      Registrar en Flujo de Caja
-                    </button>
-
-                  </form>
-                </div>
-
-                {/* Historial de Transacciones */}
-                <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Historial de Finanzas</h3>
-                  
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-800 text-slate-400 font-medium">
-                          <th className="py-2.5">Fecha</th>
-                          <th>Concepto</th>
-                          <th>Tipo / Categoría</th>
-                          <th>Barbero</th>
-                          <th className="text-right">Monto</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/60">
-                        {transactions.map(tx => {
-                          const barber = barbers.find(b => b.id === tx.barberId);
-                          return (
-                            <tr key={tx.id} className="hover:bg-slate-950/20">
-                              <td className="py-2.5 font-mono text-slate-400">{tx.date}</td>
-                              <td className="font-semibold text-slate-200">{tx.itemName}</td>
-                              <td>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                  tx.type === 'ingreso' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                                }`}>
-                                  {tx.category}
-                                </span>
-                              </td>
-                              <td className="text-slate-400">
-                                {barber ? `${barber.avatar} ${barber.name}` : '-'}
-                              </td>
-                              <td className={`text-right font-mono font-bold ${
-                                tx.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'
-                              }`}>
-                                {tx.type === 'ingreso' ? '+' : '-'}${tx.amount}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB: PRECIOS, COSTO Y UTILIDAD (INVENTARIO) */}
-          {/* ========================================================= */}
-          {currentTab === 'inventario' && (
-            <div className="space-y-6">
-              
-              {/* Formulario de Configuración Manual */}
-              {editingItemId && (
-                <div className="bg-amber-500/10 border border-amber-500/30 p-5 rounded-xl space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Editar Precios y Costo Unitario</h3>
-                      <p className="text-xs text-slate-300">
-                        Ajusta los valores para {editingItemType === 'servicio' ? 'el servicio' : 'el producto'} de forma manual para calcular utilidades netas.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setEditingItemId('')}
-                      className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSaveItemEdit} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Precio al Público ($)</label>
-                      <input
-                        type="number"
-                        value={editPrice}
-                        onChange={(e) => setEditPrice(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-amber-500 font-bold"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Costo Unitario Insumo ($)</label>
-                      <input
-                        type="number"
-                        value={editCost}
-                        onChange={(e) => setEditCost(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-red-400 font-bold"
-                        required
-                      />
-                    </div>
-                    {editingItemType === 'producto' && (
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">Stock de Inventario</label>
-                        <input
-                          type="number"
-                          value={newStock}
-                          onChange={(e) => setNewStock(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-indigo-400 font-bold"
-                          required
-                        />
-                      </div>
-                    )}
-                    <div className="flex items-end">
-                      <button
-                        type="submit"
-                        className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2 rounded text-xs"
-                      >
-                        Aplicar Cambios
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {/* Lista de Servicios */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Cargos, Costos y Utilidades de Servicios</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400">
-                        <th className="py-2.5">Servicio</th>
-                        <th>Precio Público</th>
-                        <th>Costo de Insumos</th>
-                        <th>Comisión de Barbero (40%)</th>
-                        <th>Utilidad Neta de Tienda (60% - Costos)</th>
-                        <th>Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {services.map(s => {
-                        const barberComm = s.price * 0.40;
-                        const netUtility = s.price - s.cost - barberComm;
-                        return (
-                          <tr key={s.id} className="hover:bg-slate-950/20">
-                            <td className="py-3 font-semibold text-slate-200">{s.name}</td>
-                            <td className="font-mono text-slate-300">${s.price}</td>
-                            <td className="font-mono text-red-400">${s.cost}</td>
-                            <td className="font-mono text-indigo-400">${barberComm.toFixed(2)}</td>
-                            <td className="font-mono text-emerald-400 font-bold">${netUtility.toFixed(2)}</td>
-                            <td>
-                              <button
-                                onClick={() => startEditing('servicio', s)}
-                                className="text-[11px] bg-slate-850 hover:bg-slate-800 text-amber-500 px-2 py-1 rounded transition-colors"
-                              >
-                                Editar Costos
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Inventario de Productos */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase font-bold">Control de Inventario y Utilidad de Productos</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400">
-                        <th className="py-2.5">Producto</th>
-                        <th>Stock Actual</th>
-                        <th>Precio Público</th>
-                        <th>Costo de Compra</th>
-                        <th>Margen de Utilidad</th>
-                        <th>Estado Alerta</th>
-                        <th>Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {products.map(p => {
-                        const utility = p.price - p.cost;
-                        return (
-                          <tr key={p.id} className="hover:bg-slate-950/20">
-                            <td className="py-3 font-semibold text-slate-200">{p.name}</td>
-                            <td className="font-mono text-slate-300 font-bold">{p.stock} pz</td>
-                            <td className="font-mono text-slate-300">${p.price}</td>
-                            <td className="font-mono text-red-400">${p.cost}</td>
-                            <td className="font-mono text-emerald-400 font-bold">${utility}</td>
-                            <td>
-                              {p.stock <= 2 ? (
-                                <span className="bg-red-500/10 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[10px] font-bold">STOCK BAJO</span>
-                              ) : (
-                                <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">ESTABLE</span>
-                              )}
-                            </td>
-                            <td>
-                              <button
-                                onClick={() => startEditing('producto', p)}
-                                className="text-[11px] bg-slate-850 hover:bg-slate-800 text-amber-500 px-2 py-1 rounded transition-colors"
-                              >
-                                Configurar
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* ========================================================= */}
-          {/* TAB: BARBEROS & COMISIONES */}
-          {/* ========================================================= */}
-          {currentTab === 'barberos' && (
-            <div className="space-y-6">
-              
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                <div className="border-b border-slate-800 pb-3 mb-4">
-                  <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Rendimiento e Ingresos de Barberos (Esquema 60/40)</h3>
-                  <p className="text-xs text-slate-400">
-                    Los barberos se quedan con el 40% del costo total de cada corte o servicio realizado. La barbería retiene el 60%.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {barberMetrics.map(barber => (
-                    <div key={barber.id} className="bg-slate-950 border border-slate-850 rounded-xl p-5 space-y-4">
-                      
-                      {/* Cabecera del Barbero */}
-                      <div className="flex items-center space-x-3">
-                        <span className="text-3xl bg-slate-900 p-2 rounded-lg">{barber.avatar}</span>
-                        <div>
-                          <h4 className="font-bold text-slate-100">{barber.name}</h4>
-                          <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold">Activo en Turno</span>
-                        </div>
-                      </div>
-
-                      {/* Cortes Acumulados */}
-                      <div className="bg-slate-900/60 p-3 rounded-lg flex justify-between items-center">
-                        <span className="text-xs text-slate-400">Cortes realizados del Mes:</span>
-                        <span className="text-sm font-bold text-slate-100 font-mono">{barber.totalCuts}</span>
-                      </div>
-
-                      {/* Desglose de Comisiones Ganadas (40%) */}
-                      <div className="space-y-2">
-                        <span className="text-[10px] text-slate-500 tracking-wider font-bold uppercase">Comisiones Generadas (40%):</span>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-slate-900/40 p-2 rounded">
-                            <span className="block text-[10px] text-slate-400">Hoy</span>
-                            <span className="text-xs font-bold font-mono text-emerald-400">${barber.commissionToday}</span>
-                          </div>
-                          <div className="bg-slate-900/40 p-2 rounded">
-                            <span className="block text-[10px] text-slate-400">Esta Semana</span>
-                            <span className="text-xs font-bold font-mono text-emerald-400">${barber.commissionWeek}</span>
-                          </div>
-                          <div className="bg-slate-900/40 p-2 rounded">
-                            <span className="block text-[10px] text-slate-400">Este Mes</span>
-                            <span className="text-xs font-bold font-mono text-emerald-400">${barber.commissionMonth}</span>
-                          </div>
-                          <div className="bg-slate-900/40 p-2 rounded">
-                            <span className="block text-[10px] text-slate-400">Este Año</span>
-                            <span className="text-xs font-bold font-mono text-emerald-400">${barber.commissionYear}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Comisión de Barbería */}
-                      <div className="text-slate-500 text-[11px] text-center italic">
-                        * Aportación a la barbería (60%): ${(barber.commissionYear * 1.5).toFixed(2)}
-                      </div>
-
-                    </div>
                   ))}
                 </div>
               </div>
-
+              <button
+                onClick={() => setCurrentTab('inventario')}
+                className="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors"
+              >
+                Surtir
+              </button>
             </div>
           )}
 
-          {/* ========================================================= */}
-          {/* TAB: VISTA CLIENTE (LANDING PAGE DE RESERVACIONES) */}
-          {/* ========================================================= */}
-          {currentTab === 'cliente-booking' && (
-            <div className="max-w-2xl mx-auto space-y-6">
+          {/* CONTENIDO PRINCIPAL */}
+          <div className="flex-1 flex flex-col md:flex-row">
+            
+            {/* LATERAL MENU (ADMIN) */}
+            {currentTab !== 'cliente-booking' && (
+              <aside className="w-full md:w-64 bg-slate-900/50 border-r border-slate-800/80 p-4 space-y-2 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto">
+                <div className="hidden md:block text-xs font-semibold text-slate-500 tracking-wider uppercase mb-3">
+                  Administración
+                </div>
+                
+                <button
+                  onClick={() => setCurrentTab('dashboard')}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                    currentTab === 'dashboard' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                  }`}
+                >
+                  <span>📊</span>
+                  <span>Dashboard General</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentTab('citas')}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                    currentTab === 'citas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                  }`}
+                >
+                  <span>📅</span>
+                  <span>Agenda & Citas</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentTab('finanzas')}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                    currentTab === 'finanzas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                  }`}
+                >
+                  <span>💵</span>
+                  <span>Ingresos y Gastos</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentTab('inventario')}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                    currentTab === 'inventario' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                  }`}
+                >
+                  <span>📦</span>
+                  <span>Precios & Utilidad</span>
+                </button>
+
+                <button
+                  onClick={() => setCurrentTab('barberos')}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                    currentTab === 'barberos' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                  }`}
+                >
+                  <span>💈</span>
+                  <span>Comisiones Barberos</span>
+                </button>
+              </aside>
+            )}
+
+            {/* SECCIÓN VISTA ACTIVA */}
+            <main className="flex-1 p-4 md:p-6 overflow-y-auto max-w-7xl mx-auto w-full">
               
-              {/* Encabezado de la Landing Page del Cliente */}
-              <div className="text-center space-y-2">
-                <span className="text-5xl">💈</span>
-                <h2 className="text-3xl font-extrabold text-amber-500 tracking-wider">ELITE SHAVE BARBERÍA</h2>
-                <p className="text-xs text-slate-400">Reserva tu corte con los mejores estilistas de la ciudad desde la comodidad de tu casa.</p>
-              </div>
+              {/* TAB: DASHBOARD */}
+              {currentTab === 'dashboard' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                      <div className="flex justify-between items-center text-slate-400 text-xs">
+                        <span>INGRESOS BRUTOS</span>
+                        <span className="bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded text-xs">Ventas</span>
+                      </div>
+                      <div className="mt-2">
+                        <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalRevenue.toLocaleString()}</span>
+                      </div>
+                      <div className="mt-1 text-slate-500 text-xs">Monto acumulado</div>
+                    </div>
 
-              {clientStep === 1 && (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-2xl">
-                  <h3 className="text-md font-bold text-slate-100 text-center pb-2 border-b border-slate-800">
-                    PROGRAMA TU VISITA
-                  </h3>
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                      <div className="flex justify-between items-center text-slate-400 text-xs">
+                        <span>COSTOS & COMISIONES</span>
+                        <span className="bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded text-xs">Egresos</span>
+                      </div>
+                      <div className="mt-2">
+                        <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalCost.toLocaleString()}</span>
+                      </div>
+                      <div className="mt-1 text-slate-500 text-xs">Insumos + Comisiones</div>
+                    </div>
 
-                  <form onSubmit={handleClientBooking} className="space-y-4">
-                    
-                    {/* Paso A: Seleccionar Tipo de Agenda */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">
-                        ¿Cómo deseas agendar tu cita?
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => { setClientMode('barber'); setClientBarber(barbers[0]?.id || ''); }}
-                          className={`p-3 rounded-xl border text-center transition-all ${
-                            clientMode === 'barber' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-bold' : 'bg-slate-950 border-slate-850 text-slate-400 hover:border-slate-700'
-                          }`}
-                        >
-                          <span className="block text-lg mb-1">🧔</span>
-                          <span className="text-xs">Por Barbero Favorito</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => { setClientMode('general'); setClientBarber(''); }}
-                          className={`p-3 rounded-xl border text-center transition-all ${
-                            clientMode === 'general' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-bold' : 'bg-slate-950 border-slate-850 text-slate-400 hover:border-slate-700'
-                          }`}
-                        >
-                          <span className="block text-lg mb-1">📅</span>
-                          <span className="text-xs">Agenda General (Cualquier Barbero)</span>
-                        </button>
+                    <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4 flex flex-col justify-between">
+                      <div className="flex justify-between items-center text-slate-400 text-xs">
+                        <span>UTILIDAD TOTAL</span>
+                        <span className="bg-amber-500/15 text-amber-500 px-1.5 py-0.5 rounded text-xs font-bold">Rentabilidad</span>
+                      </div>
+                      <div className="mt-2">
+                        <span className="text-2xl font-bold font-mono text-amber-500">${financialTotals.netUtility.toLocaleString()}</span>
+                      </div>
+                      <div className="mt-1 text-slate-400 text-xs font-semibold">
+                        Margen Neto: {financialTotals.profitMargin}%
                       </div>
                     </div>
 
-                    {/* Paso B: Seleccionar Barbero si aplica */}
-                    {clientMode === 'barber' && (
-                      <div>
-                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Selecciona un Profesional</label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {barbers.map(b => (
-                            <button
-                              type="button"
-                              key={b.id}
-                              onClick={() => setClientBarber(b.id)}
-                              className={`p-2.5 rounded-lg border text-center transition-all ${
-                                clientBarber === b.id ? 'bg-amber-500 border-amber-500 text-slate-950 font-bold' : 'bg-slate-950 border-slate-800 text-slate-300'
-                              }`}
-                            >
-                              <span className="text-xl block">{b.avatar}</span>
-                              <span className="text-[10px] block truncate">{b.name}</span>
-                            </button>
-                          ))}
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                      <div className="flex justify-between items-center text-slate-400 text-xs">
+                        <span>COMISIONES DE BARBEROS</span>
+                        <span className="bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded text-xs">40% Pago</span>
+                      </div>
+                      <div className="mt-2">
+                        <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalBarberCommissions.toLocaleString()}</span>
+                      </div>
+                      <div className="mt-1 text-slate-500 text-xs">Repartido a barberos</div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Demanda de Servicios</h3>
+                      {itemDemands.services.length === 0 ? (
+                        <p className="text-xs text-slate-500">Sin transacciones.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {itemDemands.services.map((item, idx) => {
+                            const percent = (item.value / (financialTotals.totalRevenue || 1)) * 100;
+                            return (
+                              <div key={idx} className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                  <span className="font-semibold text-slate-300">{item.name}</span>
+                                  <span className="font-mono text-slate-400">${item.value} ({percent.toFixed(0)}%)</span>
+                                </div>
+                                <div className="w-full bg-slate-800 rounded-full h-2">
+                                  <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
-                    )}
-
-                    {/* Paso C: Seleccionar Servicio */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Selecciona tu Servicio</label>
-                      <select
-                        value={clientService}
-                        onChange={(e) => setClientService(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-                        required
-                      >
-                        <option value="">Escoge un corte o arreglo...</option>
-                        {services.map(s => (
-                          <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>
-                        ))}
-                      </select>
+                      )}
                     </div>
 
-                    {/* Paso D: Fecha y Hora */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Demanda de Productos</h3>
+                      {itemDemands.products.length === 0 ? (
+                        <p className="text-xs text-slate-500">Sin ventas registradas.</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {itemDemands.products.map((item, idx) => {
+                            const percent = (item.value / (financialTotals.totalRevenue || 1)) * 100;
+                            return (
+                              <div key={idx} className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                  <span className="font-semibold text-slate-300">{item.name}</span>
+                                  <span className="font-mono text-slate-400">${item.value} ({percent.toFixed(0)}%)</span>
+                                </div>
+                                <div className="w-full bg-slate-800 rounded-full h-2">
+                                  <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Proyecciones */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-800 pb-4 mb-4">
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1">Día Deseado</label>
-                        <input
-                          type="date"
-                          value={clientDate}
-                          onChange={(e) => setClientDate(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-300"
-                          required
-                        />
+                        <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Proyección Financiera</h3>
+                        <p className="text-xs text-slate-400">Estima tus ingresos futuros basados en el crecimiento</p>
                       </div>
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">Hora Conveniente</label>
+                      <div className="mt-2 sm:mt-0 flex items-center space-x-2">
+                        <label className="text-xs text-slate-400 font-bold">Crecimiento:</label>
                         <select
-                          value={clientTime}
-                          onChange={(e) => setClientTime(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-300"
-                          required
+                          value={projectionGrowth}
+                          onChange={(e) => setProjectionGrowth(parseInt(e.target.value))}
+                          className="bg-slate-950 border border-slate-800 text-xs rounded px-2 py-1 text-amber-500 font-bold focus:outline-none"
                         >
-                          <option value="">Selecciona hora...</option>
-                          <option value="09:00">09:00 AM</option>
-                          <option value="10:00">10:00 AM</option>
-                          <option value="11:00">11:00 AM</option>
-                          <option value="12:00">12:00 PM</option>
-                          <option value="13:00">01:00 PM</option>
-                          <option value="14:00">02:00 PM</option>
-                          <option value="15:00">03:00 PM</option>
-                          <option value="16:00">04:00 PM</option>
-                          <option value="17:00">05:00 PM</option>
+                          <option value="5">5%</option>
+                          <option value="10">10%</option>
+                          <option value="20">20%</option>
+                          <option value="35">35%</option>
+                          <option value="50">50%</option>
                         </select>
                       </div>
                     </div>
 
-                    <button
-                      type="submit"
-                      className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-lg text-xs tracking-wider transition-colors"
-                    >
-                      CONTINUAR CON LA RESERVACIÓN
-                    </button>
-
-                  </form>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-slate-950 p-4 rounded-lg border border-slate-850">
+                        <span className="text-xs text-slate-400">Ingresos Proyectados</span>
+                        <div className="text-xl font-bold font-mono text-emerald-400 mt-1">${projections.projectedRevenue}</div>
+                        <p className="text-xs text-slate-400 mt-2">Diferencia neta estimada: <span className="text-emerald-400 font-mono font-bold">+${projections.increaseValue}</span></p>
+                      </div>
+                      <div className="bg-slate-950 p-4 rounded-lg border border-slate-850">
+                        <span className="text-xs text-slate-400">Utilidad Neta Proyectada</span>
+                        <div className="text-xl font-bold font-mono text-amber-500 mt-1">${projections.projectedUtility}</div>
+                        <p className="text-xs text-slate-400 mt-2">Manteniendo margen operativo actual.</p>
+                      </div>
+                      <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 flex flex-col justify-between">
+                        <div>
+                          <span className="text-xs text-slate-500">Métricas</span>
+                          <p className="text-xs text-slate-300 mt-1">Los balances mensuales te permiten presupuestar compras de insumos a menor costo.</p>
+                        </div>
+                        <span className="text-[10px] text-amber-500 font-semibold uppercase mt-2">💡 Tip: Ofrece combos especiales para elevar el ticket promedio.</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {clientStep === 2 && (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
-                  <h3 className="text-md font-bold text-slate-100 text-center pb-2 border-b border-slate-800">
-                    COMPLETA TU INFORMACIÓN DE CONTACTO
-                  </h3>
+              {/* TAB: CITAS & AGENDA */}
+              {currentTab === 'citas' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Nueva Cita (Llamada / Local)</h3>
+                        <p className="text-xs text-slate-400">Registrar cita directa administrada</p>
+                      </div>
+                      
+                      <form onSubmit={handleAdminAddAppointment} className="space-y-3">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Nombre del Cliente *</label>
+                          <input
+                            type="text"
+                            placeholder="Ej. Juan Pérez"
+                            value={adminClientName}
+                            onChange={(e) => setAdminClientName(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            required
+                          />
+                        </div>
 
-                  <form onSubmit={handleClientBooking} className="space-y-4">
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Nombre Completo *</label>
-                      <input
-                        type="text"
-                        placeholder="Ej. Carlos Martínez"
-                        value={clientName}
-                        onChange={(e) => setClientName(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-300"
-                        required
-                      />
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Teléfono *</label>
+                          <input
+                            type="text"
+                            placeholder="Ej. 555-0101"
+                            value={adminPhone}
+                            onChange={(e) => setAdminPhone(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Servicio *</label>
+                          <select
+                            value={adminService}
+                            onChange={(e) => setAdminService(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            required
+                          >
+                            <option value="">Selecciona un Servicio</option>
+                            {services.map(s => (
+                              <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Barbero *</label>
+                          <select
+                            value={adminBarber}
+                            onChange={(e) => setAdminBarber(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            required
+                          >
+                            <option value="">Selecciona un Barbero</option>
+                            {barbers.map(b => (
+                              <option key={b.id} value={b.id}>{b.avatar} {b.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-1">Fecha</label>
+                            <input
+                              type="date"
+                              value={adminDate}
+                              onChange={(e) => setAdminDate(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-1">Hora</label>
+                            <input
+                              type="time"
+                              value={adminTime}
+                              onChange={(e) => setAdminTime(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          className="w-full mt-2 bg-amber-500 text-slate-950 font-bold py-2 rounded text-xs hover:bg-amber-600 transition-colors"
+                        >
+                          Agendar en Sistema
+                        </button>
+                      </form>
                     </div>
 
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Número de Teléfono Celular *</label>
-                      <input
-                        type="tel"
-                        placeholder="Ej. 555-4422"
-                        value={clientPhone}
-                        onChange={(e) => setClientPhone(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-300"
-                        required
-                      />
-                    </div>
+                    <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Agenda de Citas Activas</h3>
+                        <span className="text-xs bg-slate-850 px-2 py-1 rounded text-slate-400">
+                          Total: {appointments.filter(a => a.status === 'pendiente').length} pendientes
+                        </span>
+                      </div>
 
-                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 text-xs text-slate-300 space-y-2">
-                      <h4 className="font-bold text-amber-500">Resumen de Cita:</h4>
-                      <p>✂️ Servicio: <strong className="text-white">{services.find(s => s.id === clientService)?.name}</strong></p>
-                      <p>📅 Fecha y Hora: <strong className="text-white">{clientDate} a las {clientTime} hrs</strong></p>
-                      <p>💈 Barbero: <strong className="text-white">{clientMode === 'general' ? 'Asignado Automáticamente' : barbers.find(b => b.id === clientBarber)?.name}</strong></p>
-                    </div>
+                      {appointments.length === 0 ? (
+                        <p className="text-xs text-slate-500 text-center py-8">Sin citas registradas.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {appointments.map(app => {
+                            const service = services.find(s => s.id === app.serviceId);
+                            const barber = barbers.find(b => b.id === app.barberId);
+                            return (
+                              <div
+                                key={app.id}
+                                className={`p-3 rounded-lg border flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0 ${
+                                  app.status === 'completada' ? 'bg-slate-950/40 border-slate-900 opacity-60' :
+                                  app.status === 'cancelada' ? 'bg-red-950/10 border-red-950/30 opacity-50 line-through' :
+                                  'bg-slate-950 border-slate-850'
+                                }`}
+                              >
+                                <div className="space-y-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-bold text-slate-200 text-xs sm:text-sm">{app.clientName}</span>
+                                    <span className="text-slate-500 text-[11px] font-mono">({app.phone})</span>
+                                    {app.status === 'pendiente' && <span className="bg-amber-500/10 text-amber-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Pendiente</span>}
+                                    {app.status === 'completada' && <span className="bg-emerald-500/15 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Completada</span>}
+                                    {app.status === 'cancelada' && <span className="bg-red-500/15 text-red-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Cancelada</span>}
+                                  </div>
+                                  <div className="text-xs text-slate-400">
+                                    ✂️ {service ? service.name : 'No especificado'} (${service?.price}) • 💈 Barbero: <strong className="text-amber-500">{barber ? barber.name : 'Asignado'}</strong>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 font-mono">
+                                    Fecha: {app.date} • Hora: {app.time} hrs
+                                  </div>
+                                </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setClientStep(1)}
-                        className="bg-slate-850 hover:bg-slate-800 text-slate-400 py-2.5 rounded-lg text-xs"
-                      >
-                        Atrás
-                      </button>
-                      <button
-                        type="submit"
-                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-lg text-xs"
-                      >
-                        CONFIRMAR MI RESERVACIÓN
-                      </button>
+                                {app.status === 'pendiente' && (
+                                  <div className="flex space-x-2 w-full sm:w-auto">
+                                    <button
+                                      onClick={() => handleCompleteAppointment(app.id)}
+                                      className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-2.5 py-1.5 rounded text-xs transition-colors"
+                                    >
+                                      ✓ Completar
+                                    </button>
+                                    <button
+                                      onClick={() => handleCancelAppointment(app.id)}
+                                      className="bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-300 px-2.5 py-1.5 rounded text-xs transition-colors"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  </form>
+                  </div>
                 </div>
               )}
 
-              {clientStep === 3 && (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4 shadow-2xl">
-                  <span className="text-6xl block">✅</span>
-                  <h3 className="text-xl font-bold text-emerald-400">¡RESERVACIÓN COMPLETADA CON ÉXITO!</h3>
-                  <p className="text-sm text-slate-300">
-                    Tu espacio ha sido agendado. El administrador de la barbería ya puede visualizarlo en el panel principal. Te esperamos con gusto.
-                  </p>
-                  
-                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 max-w-sm mx-auto text-xs text-left space-y-1">
-                    <p className="text-slate-500">Detalles de registro:</p>
-                    <p className="text-slate-300">Cliente: <strong className="text-slate-100">{clientName}</strong></p>
-                    <p className="text-slate-300">Servicio: <strong className="text-slate-100">{services.find(s => s.id === clientService)?.name}</strong></p>
-                    <p className="text-slate-300">Horario: <strong className="text-slate-100">{clientDate} • {clientTime} hrs</strong></p>
+              {/* TAB: FINANZAS */}
+              {currentTab === 'finanzas' && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+                      <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Registro Manual de Caja</h3>
+                      
+                      <form onSubmit={handleAddTransaction} className="space-y-3.5">
+                        <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded border border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => { setTxType('ingreso'); handleTxCategoryChange('servicio'); }}
+                            className={`py-1.5 text-xs font-bold rounded ${txType === 'ingreso' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}
+                          >
+                            Ingreso (+)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setTxType('gasto'); handleTxCategoryChange('operativo'); }}
+                            className={`py-1.5 text-xs font-bold rounded ${txType === 'gasto' ? 'bg-red-500 text-white' : 'text-slate-400'}`}
+                          >
+                            Gasto (-)
+                          </button>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Categoría</label>
+                          <select
+                            value={txCategory}
+                            onChange={(e) => handleTxCategoryChange(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                          >
+                            {txType === 'ingreso' ? (
+                              <>
+                                <option value="servicio">Servicio de Barbería</option>
+                                <option value="producto">Producto de Inventario</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="operativo">Gasto Operativo (Renta, luz...)</option>
+                                <option value="nomina">Comisiones o Pago</option>
+                                <option value="insumos">Insumos de Barbería</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+
+                        {(txCategory === 'servicio' || txCategory === 'producto') ? (
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-1">Seleccionar Item</label>
+                            <select
+                              value={selectedItemId}
+                              onChange={(e) => handleItemSelectChange(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              required
+                            >
+                              <option value="">Selecciona una opción</option>
+                              {txCategory === 'servicio'
+                                ? services.map(s => <option key={s.id} value={s.id}>{s.name} (${s.price})</option>)
+                                : products.map(p => <option key={p.id} value={p.id} disabled={p.stock < 1}>{p.name} (${p.price} - Stock: {p.stock})</option>)
+                              }
+                            </select>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-1">Concepto / Descripción</label>
+                            <input
+                              type="text"
+                              placeholder="Ej. Pago de Renta"
+                              value={txItemName}
+                              onChange={(e) => setTxItemName(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              required
+                            />
+                          </div>
+                        )}
+
+                        {txCategory === 'servicio' && txType === 'ingreso' && (
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-1">Barbero Asignado</label>
+                            <select
+                              value={txBarberId}
+                              onChange={(e) => setTxBarberId(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              required
+                            >
+                              <option value="">Selecciona un barbero</option>
+                              {barbers.map(b => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Total Monto ($) *</label>
+                          <input
+                            type="number"
+                            value={txAmount}
+                            onChange={(e) => setTxAmount(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none"
+                            required
+                            disabled={txCategory === 'servicio' || txCategory === 'producto'}
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Fecha</label>
+                          <input
+                            type="date"
+                            value={txDate}
+                            onChange={(e) => setTxDate(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                            required
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          className={`w-full font-bold py-2 rounded text-xs transition-colors ${
+                            txType === 'ingreso' ? 'bg-amber-500 hover:bg-amber-600 text-slate-950' : 'bg-red-600 hover:bg-red-700 text-white'
+                          }`}
+                        >
+                          Registrar Flujo
+                        </button>
+                      </form>
+                    </div>
+
+                    <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
+                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase font-bold">Historial de Flujo de Caja</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-800 text-slate-400">
+                              <th className="py-2">Fecha</th>
+                              <th>Concepto</th>
+                              <th>Categoría</th>
+                              <th>Barbero</th>
+                              <th className="text-right">Monto</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/60">
+                            {transactions.map(tx => {
+                              const b = barbers.find(barb => barb.id === tx.barberId);
+                              return (
+                                <tr key={tx.id} className="hover:bg-slate-950/25">
+                                  <td className="py-2 font-mono text-slate-400">{tx.date}</td>
+                                  <td className="font-semibold text-slate-200">{tx.itemName}</td>
+                                  <td>
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                                      tx.type === 'ingreso' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                                    }`}>
+                                      {tx.category}
+                                    </span>
+                                  </td>
+                                  <td className="text-slate-400">{b ? `${b.avatar} ${b.name}` : '-'}</td>
+                                  <td className={`text-right font-mono font-bold ${tx.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {tx.type === 'ingreso' ? '+' : '-'}${tx.amount}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: INVENTARIO & PRECIOS */}
+              {currentTab === 'inventario' && (
+                <div className="space-y-6">
+                  {editingItemId && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 p-5 rounded-xl space-y-4">
+                      <div className="flex justify-between items-center">
+                        <h3 className="text-sm font-bold text-amber-500 uppercase">Ajustar Precios de {editingItemType}</h3>
+                        <button onClick={() => setEditingItemId('')} className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded">Cancelar</button>
+                      </div>
+
+                      <form onSubmit={handleSaveItemEdit} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Precio Público ($)</label>
+                          <input
+                            type="number"
+                            value={editPrice}
+                            onChange={(e) => setEditPrice(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-amber-500 font-bold"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Costo Unitario ($)</label>
+                          <input
+                            type="number"
+                            value={editCost}
+                            onChange={(e) => setEditCost(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-red-400 font-bold"
+                            required
+                          />
+                        </div>
+                        {editingItemType === 'producto' && (
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-1">Stock de Almacén</label>
+                            <input
+                              type="number"
+                              value={newStock}
+                              onChange={(e) => setNewStock(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-indigo-400 font-bold"
+                              required
+                            />
+                          </div>
+                        )}
+                        <div className="flex items-end">
+                          <button type="submit" className="w-full bg-amber-500 text-slate-950 font-bold py-2 rounded text-xs">Guardar Tarifa</button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                    <h3 className="text-sm font-bold text-amber-500 mb-4 uppercase">Costo y Margen de Utilidad (Servicios)</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-slate-400">
+                            <th className="py-2">Servicio</th>
+                            <th>P. Público</th>
+                            <th>Insumos</th>
+                            <th>Pago Barbero (40%)</th>
+                            <th>Utilidad Neta (60% - Costos)</th>
+                            <th>Ajustes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {services.map(s => {
+                            const barberComm = s.price * 0.40;
+                            const netUtility = s.price - s.cost - barberComm;
+                            return (
+                              <tr key={s.id} className="hover:bg-slate-950/15">
+                                <td className="py-3 font-semibold text-slate-200">{s.name}</td>
+                                <td className="font-mono text-slate-300">${s.price}</td>
+                                <td className="font-mono text-red-400">${s.cost}</td>
+                                <td className="font-mono text-indigo-400">${barberComm.toFixed(2)}</td>
+                                <td className="font-mono text-emerald-400 font-bold">${netUtility.toFixed(2)}</td>
+                                <td>
+                                  <button onClick={() => startEditing('servicio', s)} className="text-[11px] text-amber-500 hover:underline">Configurar</button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
-                  <button
-                    onClick={() => { setCurrentTab('dashboard'); resetClientBookingForm(); }}
-                    className="mt-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2 rounded-lg text-xs"
-                  >
-                    Regresar al Panel Principal
-                  </button>
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                    <h3 className="text-sm font-bold text-amber-500 mb-4 uppercase">Inventario y Utilidades (Productos)</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-800 text-slate-400">
+                            <th className="py-2">Producto</th>
+                            <th>Stock</th>
+                            <th>P. Público</th>
+                            <th>Costo Adquisición</th>
+                            <th>Utilidad Bruta</th>
+                            <th>Estatus</th>
+                            <th>Ajustes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {products.map(p => {
+                            const utility = p.price - p.cost;
+                            return (
+                              <tr key={p.id} className="hover:bg-slate-950/15">
+                                <td className="py-3 font-semibold text-slate-200">{p.name}</td>
+                                <td className="font-mono text-slate-200 font-bold">{p.stock} pz</td>
+                                <td className="font-mono text-slate-300">${p.price}</td>
+                                <td className="font-mono text-red-400">${p.cost}</td>
+                                <td className="font-mono text-emerald-400 font-bold">${utility}</td>
+                                <td>
+                                  {p.stock <= 2 ? (
+                                    <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-bold">STOCK BAJO</span>
+                                  ) : (
+                                    <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">ESTABLE</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <button onClick={() => startEditing('producto', p)} className="text-[11px] text-amber-500 hover:underline">Configurar</button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               )}
 
-            </div>
-          )}
+              {/* TAB: BARBEROS */}
+              {currentTab === 'barberos' && (
+                <div className="space-y-6">
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                    <div className="border-b border-slate-800 pb-3 mb-4">
+                      <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Rendimiento de Barberos (Esquema 60/40)</h3>
+                      <p className="text-xs text-slate-400">Corte/Servicio: 40% de comisión para el Barbero y 60% retenido por la Barbería.</p>
+                    </div>
 
-        </main>
-      </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {barberMetrics.map(barber => (
+                        <div key={barber.id} className="bg-slate-950 border border-slate-850 rounded-xl p-5 space-y-4">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-3xl bg-slate-900 p-2 rounded-lg">{barber.avatar}</span>
+                            <div>
+                              <h4 className="font-bold text-slate-100">{barber.name}</h4>
+                              <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold">Activo</span>
+                            </div>
+                          </div>
 
-      {/* --- PIE DE PÁGINA --- */}
-      <footer className="bg-slate-900 border-t border-slate-800 py-3 text-center text-slate-500 text-[10px] tracking-wide mt-auto">
-        &copy; 2026 Elite Shave Barbería. Todos los derechos reservados. Desarrollado para Control Financiero y Proyecciones Estables de Negocio.
-      </footer>
+                          <div className="bg-slate-900/50 p-3 rounded-lg flex justify-between items-center text-xs">
+                            <span className="text-slate-400">Servicios realizados:</span>
+                            <span className="font-bold text-slate-100 font-mono">{barber.totalCuts}</span>
+                          </div>
 
-    </div>
-  );
-}
+                          <div className="space-y-2">
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Historial Comisiones (40%):</span>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="bg-slate-900/30 p-2 rounded">
+                                <span className="block text-[10px] text-slate-400">Hoy</span>
+                                <span className="font-bold text-emerald-400 font-mono">${barber.commissionToday}</span>
+                              </div>
+                              <div className="bg-slate-900/30 p-2 rounded">
+                                <span className="block text-[10px] text-slate-400">Semana</span>
+                                <span className="font-bold text-emerald-400 font-mono">${barber.commissionWeek}</span>
+                              </div>
+                              <div className="bg-slate-900/30 p-2 rounded">
+                                <span className="block text-[10px] text-slate-400">Mes</span>
+                                <span className="font-bold text-emerald-400 font-mono">${barber.commissionMonth}</span>
+                              </div>
+                              <div className="bg-slate-900/30 p-2 rounded">
+                                <span className="block text-[10px] text-slate-400">Año</span>
+                                <span className="font-bold text-emerald-400 font-mono">${barber.commissionYear}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: RESERVAS CLIENTES */}
+              {currentTab === 'cliente-booking' && (
+                <div className="max-w-2xl mx-auto space-y-6">
+                  <div className="text-center space-y-2">
+                    <span className="text-5xl">💈</span>
+                    <h2 className="text-3xl font-extrabold text-amber-500 tracking-wider">ELITE SHAVE BARBERÍA</h2>
+                    <p className="text-xs text-slate-400">Agenda tu cita de manera automatizada</p>
+                  </div>
+
+                  {clientStep === 1 && (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-2xl">
+                      <h3 className="text-md font-bold text-slate-100 text-center pb-2 border-b border-slate-800">PROGRAMA TU CITA</h3>
+                      
+                      <form onSubmit={handleClientBooking} className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-400 uppercase mb-2">¿Cómo deseas agendar?</label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => { setClientMode('barber'); setClientBarber(barbers[0]?.id || ''); }}
+                              className={`p-3 rounded-xl border text-center transition-all ${
+                                clientMode === 'barber' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-bold' : 'bg-slate-950 border-slate-850 text-slate-400'
+                              }`}
+                            >
+                              <span className="block text-lg">🧔</span>
+                              <span className="text-xs">Por Barbero Favorito</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setClientMode('general'); setClientBarber(''); }}
+                              className={`p-3 rounded-xl border text-center transition-all ${
+                                clientMode === 'general' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-bold' : 'bg-slate-950 border-slate-850 text-slate-400'
+                              }`}
+                            >
+                              <span className="block text-lg">📅</span>
+                              <span className="text-xs">Agenda General</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {clientMode === 'barber' && (
+                          <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Selecciona Profesional</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {barbers.map(b => (
+                                <button
+                                  type="button"
+                                  key={b.id}
+                                  onClick={() => setClientBarber(b.id)}
+                                  className={`p-2 rounded-lg border text-center transition-all ${
+                                    clientBarber === b.id ? 'bg-amber-500 border-amber-500 text-slate-950 font-bold' : 'bg-slate-950 border-slate-800 text-slate-300'
+                                  }`}
+                                >
+                                  <span className="block">{b.avatar}</span>
+                                  <span className="text-[10px] block truncate">{b.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Selecciona Servicio</label>
+                          <select
+                            value={clientService}
+                            onChange={(e) => setClientService(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            required
+                          >
+                            <option value="">Escoge un servicio...</option>
+                            {services.map(s => (
+                              <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-1">Día Deseado</label>
+                            <input
+                              type="date"
+                              value={clientDate}
+                              onChange={(e) => setClientDate(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-slate-400 mb-1">Hora Conveniente</label>
+                            <select
+                              value={clientTime}
+                              onChange={(e) => setClientTime(e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
+                              required
+                            >
+                              <option value="">Selecciona hora...</option>
+                              <option value="09:00">09:00 AM</option>
+                              <option value="10:00">10:00 AM</option>
+                              <option value="11:00">11:00 AM</option>
+                              <option value="12:00">12:00 PM</option>
+                              <option value="13:00">01:00 PM</option>
+                              <option value="14:00">02:00 PM</option>
+                              <option value="15:00">03:00 PM</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-lg text-xs tracking-wider transition-colors">
+                          SIGUIENTE PASO
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  {clientStep === 2 && (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
+                      <h3 className="text-md font-bold text-slate-100 text-center pb-2 border-b border-slate-800">COMPLETA TUS DATOS</h3>
+                      
+                      <form onSubmit={handleClientBooking} className="space-y-4">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Nombre Completo *</label>
+                          <input
+                            type="text"
+                            placeholder="Ej. Carlos Martínez"
+                            value={clientName}
+                            onChange={(e) => setClientName(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Teléfono Celular *</label>
+                          <input
+                            type="tel"
+                            placeholder="Ej. 555-4422"
+                            value={clientPhone}
+                            onChange={(e) => setClientPhone(e.target.value)}
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
+                            required
+                          />
+                        </div>
+
+                        <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 text-xs text-slate-300 space-y-1">
+                          <h4 className="font-bold text-amber-500">Resumen:</h4>
+                          <p>✂️ Servicio: <strong className="text-white">{services.find(s => s.id === clientService)?.name}</strong></p>
+                          <p>📅 Horario: <strong className="text-white">{clientDate} a las {clientTime} hrs</strong></p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button type="button" onClick={() => setClientStep(1)} className="bg-slate-850 hover:bg-slate-800 text-slate-400 py-2.5 rounded-lg text-xs">Atrás</button>
+                          <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-lg text-xs">CONFIRMAR CITA</button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+
+                  {clientStep === 3 && (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4 shadow-2xl">
+                      <span className="text-6xl block">✅</span>
+                      <h3 className="text-xl font-bold text-emerald-400">¡AGENDADO CON ÉXITO!</h3>
+                      <p className="text-sm text-slate-300">Te esperamos en la sucursal de Elite Shave.</p>
+                      <button onClick={() => { setCurrentTab('dashboard'); resetClientBookingForm(); }} className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2 rounded-lg text-xs">Regresar al Panel</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </main>
+          </div>
+
+          <footer className="bg-slate-900 border-t border-slate-800 py-3 text-center text-slate-500 text-[10px] mt-auto">
+            &copy; 2026 Elite Shave Barbería. Control Financiero Inteligente.
+          </footer>
+        </div>
+      );
+    }
+
+    // Inicializar y renderizar la App mediante React 18
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
