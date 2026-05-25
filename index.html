@@ -1,651 +1,1649 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Solar Manager Pro</title>
+import React, { useState, useMemo } from 'react';
+
+// --- MOCK DATA INICIAL ---
+const INITIAL_SERVICES = [
+  { id: 's1', name: 'Corte de Cabello Clásico', price: 250, cost: 50 },
+  { id: 's2', name: 'Arreglo de Barba Premium', price: 180, cost: 30 },
+  { id: 's3', name: 'Corte + Barba (Combo)', price: 380, cost: 70 },
+  { id: 's4', name: 'Coloración / Tintura', price: 500, cost: 120 },
+];
+
+const INITIAL_PRODUCTS = [
+  { id: 'p1', name: 'Cera Moldeadora Mate', price: 220, cost: 100, stock: 6 },
+  { id: 'p2', name: 'Aceite de Barba de Eucalipto', price: 190, cost: 80, stock: 2 }, // Alerta de stock bajo <= 2
+  { id: 'p3', name: 'Champú Anticaspa Profesional', price: 280, cost: 120, stock: 1 }, // Alerta de stock bajo <= 2
+  { id: 'p4', name: 'Aftershave Bálsamo Suave', price: 150, cost: 60, stock: 12 },
+];
+
+const INITIAL_BARBERS = [
+  { id: 'b1', name: 'Carlos Gómez', avatar: '✂️', active: true },
+  { id: 'b2', name: 'Mateo Rodríguez', avatar: '💈', active: true },
+  { id: 'b3', name: 'Santiago "Razor" Silva', avatar: '🧔', active: true },
+];
+
+const INITIAL_TRANSACTIONS = [
+  // Transacciones pasadas para simular el dashboard y gráficos
+  { id: 't1', type: 'ingreso', category: 'servicio', itemId: 's1', itemName: 'Corte de Cabello Clásico', amount: 250, date: '2026-05-10', barberId: 'b1' },
+  { id: 't2', type: 'ingreso', category: 'servicio', itemId: 's3', itemName: 'Corte + Barba (Combo)', amount: 380, date: '2026-05-12', barberId: 'b2' },
+  { id: 't3', type: 'ingreso', category: 'producto', itemId: 'p1', itemName: 'Cera Moldeadora Mate', amount: 220, date: '2026-05-14', barberId: null },
+  { id: 't4', type: 'gasto', category: 'operativo', itemName: 'Renta del Local', amount: 3000, date: '2026-05-01', barberId: null },
+  { id: 't5', type: 'gasto', category: 'operativo', itemName: 'Insumos de Barbería (Toallas, etc)', amount: 450, date: '2026-05-05', barberId: null },
+  { id: 't6', type: 'ingreso', category: 'servicio', itemId: 's4', itemName: 'Coloración / Tintura', amount: 500, date: '2026-05-20', barberId: 'b3' },
+  { id: 't7', type: 'ingreso', category: 'producto', itemId: 'p4', itemName: 'Aftershave Bálsamo Suave', amount: 150, date: '2026-05-22', barberId: null },
+  { id: 't8', type: 'ingreso', category: 'servicio', itemId: 's2', itemName: 'Arreglo de Barba Premium', amount: 180, date: '2026-05-24', barberId: 'b1' },
+];
+
+const INITIAL_APPOINTMENTS = [
+  { id: 'a1', clientName: 'Juan Pérez', phone: '555-0192', barberId: 'b1', serviceId: 's1', date: '2026-05-26', time: '10:00', status: 'pendiente' },
+  { id: 'a2', clientName: 'Andrés López', phone: '555-0343', barberId: 'b2', serviceId: 's3', date: '2026-05-26', time: '11:30', status: 'pendiente' },
+  { id: 'a3', clientName: 'Diego Torres', phone: '555-0988', barberId: 'b3', serviceId: 's2', date: '2026-05-27', time: '14:00', status: 'pendiente' },
+];
+
+export default function App() {
+  // --- ESTADOS DE LA APLICACIÓN ---
+  const [currentTab, setCurrentTab] = useState('dashboard'); // dashboard, citas, finanzas, inventario, barberos, cliente-booking
+  const [services, setServices] = useState(INITIAL_SERVICES);
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [barbers, setBarbers] = useState(INITIAL_BARBERS);
+  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
+  const [appointments, setAppointments] = useState(INITIAL_APPOINTMENTS);
+
+  // --- ESTADOS DE FORMULARIOS ---
+  // Transacciones manuales
+  const [txType, setTxType] = useState('ingreso');
+  const [txCategory, setTxCategory] = useState('servicio'); // servicio, producto, operativo, etc.
+  const [selectedItemId, setSelectedItemId] = useState('');
+  const [txAmount, setTxAmount] = useState('');
+  const [txItemName, setTxItemName] = useState('');
+  const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
+  const [txBarberId, setTxBarberId] = useState('');
+
+  // Edición de Utilidad/Costos Manual
+  const [editingItemType, setEditingItemType] = useState('servicio');
+  const [editingItemId, setEditingItemId] = useState('');
+  const [editPrice, setEditPrice] = useState('');
+  const [editCost, setEditCost] = useState('');
+  const [newStock, setNewStock] = useState('');
+
+  // Agendamiento Admin
+  const [adminClientName, setAdminClientName] = useState('');
+  const [adminPhone, setAdminPhone] = useState('');
+  const [adminBarber, setAdminBarber] = useState('');
+  const [adminService, setAdminService] = useState('');
+  const [adminDate, setAdminDate] = useState(new Date().toISOString().split('T')[0]);
+  const [adminTime, setAdminTime] = useState('09:00');
+
+  // Agendamiento Cliente (Landing Page Simulada)
+  const [clientStep, setClientStep] = useState(1); // 1: Inicio/Selección de Modo, 2: Datos, 3: Confirmación
+  const [clientMode, setClientMode] = useState(''); // 'barber' o 'general'
+  const [clientBarber, setClientBarber] = useState('');
+  const [clientService, setClientService] = useState('');
+  const [clientDate, setClientDate] = useState('');
+  const [clientTime, setClientTime] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+
+  // Proyecciones
+  const [projectionGrowth, setProjectionGrowth] = useState(10); // % de crecimiento esperado
+
+  // Mensaje de notificación temporal tipo modal/banner
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => {
+      setNotification(null);
+    }, 5000);
+  };
+
+  // --- MANEJADORES DE ACCIONES ---
+
+  // Al seleccionar categoría en el formulario de transacciones rápidas
+  const handleTxCategoryChange = (cat) => {
+    setTxCategory(cat);
+    if (cat === 'servicio') {
+      const firstSrv = services[0];
+      if (firstSrv) {
+        setSelectedItemId(firstSrv.id);
+        setTxAmount(firstSrv.price);
+        setTxItemName(firstSrv.name);
+      }
+    } else if (cat === 'producto') {
+      const firstProd = products[0];
+      if (firstProd) {
+        setSelectedItemId(firstProd.id);
+        setTxAmount(firstProd.price);
+        setTxItemName(firstProd.name);
+      }
+    } else {
+      setSelectedItemId('');
+      setTxAmount('');
+      setTxItemName('');
+    }
+  };
+
+  // Al seleccionar un producto o servicio específico en el formulario
+  const handleItemSelectChange = (id) => {
+    setSelectedItemId(id);
+    if (txCategory === 'servicio') {
+      const srv = services.find(s => s.id === id);
+      if (srv) {
+        setTxAmount(srv.price);
+        setTxItemName(srv.name);
+      }
+    } else if (txCategory === 'producto') {
+      const prod = products.find(p => p.id === id);
+      if (prod) {
+        setTxAmount(prod.price);
+        setTxItemName(prod.name);
+      }
+    }
+  };
+
+  // Agregar Transacción Manualmente (Finanzas)
+  const handleAddTransaction = (e) => {
+    e.preventDefault();
+    let finalAmount = parseFloat(txAmount);
+    let finalItemName = txItemName;
+
+    if (txType === 'gasto' && txCategory === 'operativo') {
+      if (!finalItemName || isNaN(finalAmount)) {
+        showNotification('Por favor completa todos los campos del gasto operativo.', 'error');
+        return;
+      }
+    } else {
+      if (!selectedItemId || isNaN(finalAmount)) {
+        showNotification('Selecciona un elemento y un monto válido.', 'error');
+        return;
+      }
+    }
+
+    // Si es un producto, verificar y restar stock
+    if (txType === 'ingreso' && txCategory === 'producto') {
+      const updatedProducts = products.map(prod => {
+        if (prod.id === selectedItemId) {
+          if (prod.stock < 1) {
+            showNotification(`¡Error! El producto "${prod.name}" no tiene stock disponible.`, 'error');
+            throw new Error('Sin stock');
+          }
+          const nextStock = prod.stock - 1;
+          if (nextStock <= 2) {
+            showNotification(`⚠️ ALERTA DE STOCK BAJO: "${prod.name}" ahora tiene solo ${nextStock} unidades disponibles.`, 'warning');
+          }
+          return { ...prod, stock: nextStock };
+        }
+        return prod;
+      });
+      setProducts(updatedProducts);
+    }
+
+    const newTx = {
+      id: 't_' + Date.now(),
+      type: txType,
+      category: txCategory,
+      itemId: selectedItemId || null,
+      itemName: finalItemName,
+      amount: finalAmount,
+      date: txDate,
+      barberId: txCategory === 'servicio' ? txBarberId : null
+    };
+
+    setTransactions([newTx, ...transactions]);
+    showNotification('Registro financiero agregado correctamente.');
     
-    <!-- Configuración para App Instalable (PWA) -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="SolarPro">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#f59e0b">
+    // Limpiar formulario
+    setTxAmount('');
+    setSelectedItemId('');
+    setTxItemName('');
+  };
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel para JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+  // Guardar configuración manual de Costo / Utilidad / Stock
+  const handleSaveItemEdit = (e) => {
+    e.preventDefault();
+    const price = parseFloat(editPrice);
+    const cost = parseFloat(editCost);
+
+    if (isNaN(price) || isNaN(cost)) {
+      showNotification('Monto de precio y costo deben ser válidos.', 'error');
+      return;
+    }
+
+    if (editingItemType === 'servicio') {
+      setServices(services.map(s => {
+        if (s.id === editingItemId) {
+          return { ...s, price, cost };
+        }
+        return s;
+      }));
+      showNotification('Servicio actualizado correctamente.');
+    } else {
+      const stockVal = parseInt(newStock);
+      if (isNaN(stockVal)) {
+        showNotification('Stock debe ser un número entero.', 'error');
+        return;
+      }
+      setProducts(products.map(p => {
+        if (p.id === editingItemId) {
+          return { ...p, price, cost, stock: stockVal };
+        }
+        return p;
+      }));
+      showNotification('Producto de inventario actualizado correctamente.');
+    }
     
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: contain;
-        }
+    setEditingItemId('');
+    setEditPrice('');
+    setEditCost('');
+    setNewStock('');
+  };
+
+  // Iniciar edición de precios/costos
+  const startEditing = (type, item) => {
+    setEditingItemType(type);
+    setEditingItemId(item.id);
+    setEditPrice(item.price);
+    setEditCost(item.cost);
+    if (type === 'producto') {
+      setNewStock(item.stock);
+    }
+  };
+
+  // Agendar cita desde panel administrativo (Llamada telefónica)
+  const handleAdminAddAppointment = (e) => {
+    e.preventDefault();
+    if (!adminClientName || !adminBarber || !adminService || !adminPhone) {
+      showNotification('Por favor completa todos los campos obligatorios.', 'error');
+      return;
+    }
+
+    const newAppoint = {
+      id: 'a_' + Date.now(),
+      clientName: adminClientName,
+      phone: adminPhone,
+      barberId: adminBarber,
+      serviceId: adminService,
+      date: adminDate,
+      time: adminTime,
+      status: 'pendiente'
+    };
+
+    setAppointments([...appointments, newAppoint]);
+    showNotification(`Cita de ${adminClientName} agendada correctamente.`);
+    
+    // Reset admin form
+    setAdminClientName('');
+    setAdminPhone('');
+    setAdminBarber('');
+    setAdminService('');
+  };
+
+  // Completar cita -> Se convierte automáticamente en un ingreso para la barbería y calcula comisión del barbero
+  const handleCompleteAppointment = (id) => {
+    const app = appointments.find(a => a.id === id);
+    if (!app) return;
+
+    const service = services.find(s => s.id === app.serviceId);
+    if (!service) return;
+
+    // Crear la transacción de ingreso por servicio
+    const newTx = {
+      id: 't_' + Date.now(),
+      type: 'ingreso',
+      category: 'servicio',
+      itemId: service.id,
+      itemName: service.name,
+      amount: service.price,
+      date: app.date,
+      barberId: app.barberId
+    };
+
+    setTransactions([newTx, ...transactions]);
+    
+    // Actualizar estado de la cita
+    setAppointments(appointments.map(a => {
+      if (a.id === id) {
+        return { ...a, status: 'completada' };
+      }
+      return a;
+    }));
+
+    showNotification(`¡Cita de ${app.clientName} completada! Ingreso de $${service.price} registrado. Comisión del 40% para el barbero aplicada.`);
+  };
+
+  // Cancelar cita
+  const handleCancelAppointment = (id) => {
+    setAppointments(appointments.map(a => {
+      if (a.id === id) {
+        return { ...a, status: 'cancelada' };
+      }
+      return a;
+    }));
+    showNotification('Cita cancelada correctamente.', 'info');
+  };
+
+  // Proceso de Reservación del Cliente (Landing Page)
+  const handleClientBooking = (e) => {
+    e.preventDefault();
+    if (clientStep === 1) {
+      if (!clientService || !clientDate || !clientTime) {
+        showNotification('Por favor escoge servicio, fecha y horario.', 'error');
+        return;
+      }
+      if (clientMode === 'barber' && !clientBarber) {
+        showNotification('Por favor selecciona un barbero.', 'error');
+        return;
+      }
+      setClientStep(2);
+    } else if (clientStep === 2) {
+      if (!clientName || !clientPhone) {
+        showNotification('Por favor escribe tu nombre y teléfono de contacto.', 'error');
+        return;
+      }
+
+      // Asignar barbero disponible de forma automática si es "general"
+      let finalBarberId = clientBarber;
+      if (clientMode === 'general') {
+        // Encontrar barbero disponible al azar o secuencialmente
+        const randomIndex = Math.floor(Math.random() * barbers.length);
+        finalBarberId = barbers[randomIndex]?.id || 'b1';
+      }
+
+      const newAppoint = {
+        id: 'a_' + Date.now(),
+        clientName,
+        phone: clientPhone,
+        barberId: finalBarberId,
+        serviceId: clientService,
+        date: clientDate,
+        time: clientTime,
+        status: 'pendiente'
+      };
+
+      setAppointments([...appointments, newAppoint]);
+      setClientStep(3);
+    }
+  };
+
+  const resetClientBookingForm = () => {
+    setClientStep(1);
+    setClientMode('');
+    setClientBarber('');
+    setClientService('');
+    setClientDate('');
+    setClientTime('');
+    setClientName('');
+    setClientPhone('');
+  };
+
+
+  // --- CÁLCULOS DEL PORTAFOLIO Y RENTABILIDAD ---
+
+  // Alertas de Stock Bajo
+  const lowStockAlerts = useMemo(() => {
+    return products.filter(p => p.stock <= 2);
+  }, [products]);
+
+  // Totales financieros generales
+  const financialTotals = useMemo(() => {
+    let totalRevenue = 0;
+    let totalCost = 0;
+    let totalBarberCommissions = 0;
+
+    transactions.forEach(tx => {
+      if (tx.type === 'ingreso') {
+        totalRevenue += tx.amount;
         
-        @keyframes slideUp { 
-            from { opacity: 0; transform: translateY(20px); } 
-            to { opacity: 1; transform: translateY(0); } 
+        // Calcular costo unitario
+        if (tx.category === 'servicio') {
+          const srv = services.find(s => s.id === tx.itemId);
+          if (srv) {
+            totalCost += srv.cost;
+          }
+          // Comisión barbero: 40% del total de ventas del servicio realizado
+          totalBarberCommissions += tx.amount * 0.40;
+        } else if (tx.category === 'producto') {
+          const prod = products.find(p => p.id === tx.itemId);
+          if (prod) {
+            totalCost += prod.cost;
+          }
         }
-        .animate-section { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      } else if (tx.type === 'gasto') {
+        totalCost += tx.amount;
+      }
+    });
+
+    // Utilidad total de negocio = Ingresos - Costos totales de productos/servicios - Gastos de operación - Comisiones pagadas a barberos
+    const netUtility = totalRevenue - totalCost - totalBarberCommissions;
+    const margin = totalRevenue > 0 ? (netUtility / totalRevenue) * 100 : 0;
+
+    return {
+      totalRevenue,
+      totalCost: totalCost + totalBarberCommissions, // los gastos e insumos + comisiones son parte del costo de operación
+      totalBarberCommissions,
+      netUtility,
+      profitMargin: margin.toFixed(1)
+    };
+  }, [transactions, services, products]);
+
+
+  // Demandas de productos y servicios (Top Ventas)
+  const itemDemands = useMemo(() => {
+    const srvCounts = {};
+    const prodCounts = {};
+
+    transactions.forEach(tx => {
+      if (tx.type === 'ingreso') {
+        if (tx.category === 'servicio') {
+          srvCounts[tx.itemName] = (srvCounts[tx.itemName] || 0) + tx.amount;
+        } else if (tx.category === 'producto') {
+          prodCounts[tx.itemName] = (prodCounts[tx.itemName] || 0) + tx.amount;
+        }
+      }
+    });
+
+    return {
+      services: Object.entries(srvCounts).map(([name, val]) => ({ name, value: val })).sort((a,b) => b.value - a.value),
+      products: Object.entries(prodCounts).map(([name, val]) => ({ name, value: val })).sort((a,b) => b.value - a.value),
+    };
+  }, [transactions]);
+
+
+  // Rendimiento de Barberos (Comisiones y Cortes)
+  const barberMetrics = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // Función auxiliar para saber si es de esta semana (últimos 7 días)
+    const isThisWeek = (dateStr) => {
+      const date = new Date(dateStr);
+      const today = new Date();
+      const diffTime = Math.abs(today - date);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays <= 7;
+    };
+
+    // Mes actual
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+
+    return barbers.map(barber => {
+      const barberTxs = transactions.filter(tx => tx.barberId === barber.id && tx.category === 'servicio');
+      
+      let commissionToday = 0;
+      let commissionWeek = 0;
+      let commissionMonth = 0;
+      let commissionYear = 0;
+      let totalCuts = barberTxs.length;
+
+      barberTxs.forEach(tx => {
+        const comm = tx.amount * 0.40; // 40% de comisión para el barbero
         
-        .bg-solar-mesh {
-            background-color: #f8fafc;
-            background-image: radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.05) 0, transparent 50%), 
-                              radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0, transparent 50%);
+        // Hoy
+        if (tx.date === todayStr) {
+          commissionToday += comm;
         }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
+        // Semana
+        if (isThisWeek(tx.date)) {
+          commissionWeek += comm;
         }
+        // Mes
+        const txDateObj = new Date(tx.date);
+        if (txDateObj.getMonth() === currentMonth && txDateObj.getFullYear() === currentYear) {
+          commissionMonth += comm;
+        }
+        // Año
+        if (txDateObj.getFullYear() === currentYear) {
+          commissionYear += comm;
+        }
+      });
 
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
-        
-        .safe-top { padding-top: env(safe-area-inset-top); }
-        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-    </style>
-</head>
-<body class="bg-solar-mesh min-h-screen selection:bg-amber-100 overflow-x-hidden">
-    <div id="root"></div>
+      return {
+        ...barber,
+        totalCuts,
+        commissionToday,
+        commissionWeek,
+        commissionMonth,
+        commissionYear
+      };
+    });
+  }, [transactions, barbers]);
 
-    <script type="text/babel" data-type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBIaQoqFI10IQBXVwUDh7bA_0jBVntnZzU",
-            authDomain: "solarpro-397be.firebaseapp.com",
-            projectId: "solarpro-397be",
-            storageBucket: "solarpro-397be.firebasestorage.app",
-            messagingSenderId: "107137996727",
-            appId: "1:107137996727:web:a03fc9bb9c133321463a32",
-            measurementId: "G-E0RV2VSEP7"
-        };
+  // Proyecciones Financieras
+  const projections = useMemo(() => {
+    const rev = financialTotals.totalRevenue;
+    const growthFactor = 1 + (projectionGrowth / 100);
+    const projectedRevenue = rev * growthFactor;
+    
+    // Proyección de utilidad manteniendo margen actual
+    const marginRatio = financialTotals.totalRevenue > 0 ? (financialTotals.netUtility / financialTotals.totalRevenue) : 0.40;
+    const projectedUtility = projectedRevenue * marginRatio;
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = 'solarpro-397be-main';
+    return {
+      projectedRevenue: projectedRevenue.toFixed(2),
+      projectedUtility: projectedUtility.toFixed(2),
+      increaseValue: (projectedRevenue - rev).toFixed(2)
+    };
+  }, [financialTotals, projectionGrowth]);
 
-        const { useState, useEffect, useMemo, useRef } = React;
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      
+      {/* --- CABECERA --- */}
+      <header className="bg-slate-900 border-b border-amber-500/20 px-4 py-3 flex justify-between items-center sticky top-0 z-40">
+        <div className="flex items-center space-x-3">
+          <span className="text-3xl">💈</span>
+          <div>
+            <h1 className="text-lg font-bold text-amber-500 tracking-wider">ELITE SHAVE</h1>
+            <p className="text-xs text-slate-400">Control Financiero & Reservas</p>
+          </div>
+        </div>
 
-        // --- COMPONENTES GLOBALES ---
+        {/* Acceso rápido a Vista Cliente */}
+        <button
+          onClick={() => { setCurrentTab('cliente-booking'); resetClientBookingForm(); }}
+          className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center transition-colors"
+        >
+          <span className="mr-1">🌐</span> Vista de Clientes (Link)
+        </button>
+      </header>
 
-        const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
-            const iconRef = useRef(null);
-            useEffect(() => {
-                if (window.lucide && iconRef.current) {
-                    iconRef.current.innerHTML = `<i data-lucide="${name}"></i>`;
-                    window.lucide.createIcons({
-                        elements: iconRef.current.querySelectorAll('[data-lucide]'),
-                        attrs: { 'stroke-width': strokeWidth, width: size, height: size }
-                    });
-                }
-            }, [name, size, strokeWidth]);
-            return <span ref={iconRef} className={`inline-flex items-center justify-center ${className}`}></span>;
-        };
+      {/* --- NOTIFICACIONES / ALERTAS --- */}
+      {notification && (
+        <div className={`p-4 text-center font-semibold text-sm ${
+          notification.type === 'error' ? 'bg-red-900 text-red-100' :
+          notification.type === 'warning' ? 'bg-amber-600 text-slate-950' : 'bg-emerald-800 text-emerald-100'
+        } transition-all duration-300`}>
+          {notification.message}
+        </div>
+      )}
 
-        const Hero = ({ title, subtitle, icon, color }) => (
-            <div className={`relative overflow-hidden rounded-[2.5rem] p-8 md:p-12 mb-10 text-white shadow-2xl ${color} animate-section`}>
-                <div className="relative z-10">
-                    <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md w-fit mb-6">
-                        <Icon name={icon} size={32} />
-                    </div>
-                    <h1 className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight leading-none text-white">{title}</h1>
-                    <p className="text-white/80 text-lg font-medium max-w-xl leading-relaxed">{subtitle}</p>
-                </div>
-                <Icon name={icon} size={400} className="absolute -right-20 -top-20 opacity-10 pointer-events-none" />
+      {/* --- ALERTAS DE STOCK BAJO AL TOP --- */}
+      {lowStockAlerts.length > 0 && currentTab !== 'cliente-booking' && (
+        <div className="bg-red-950 border-y border-red-500/30 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-red-400 text-xs sm:text-sm">
+            <span>🚨</span>
+            <strong className="font-bold">¡Stock Crítico!</strong>
+            <span>Los siguientes artículos tienen 2 o menos unidades en inventario:</span>
+            <div className="flex flex-wrap gap-1.5 ml-2">
+              {lowStockAlerts.map(p => (
+                <span key={p.id} className="bg-red-900 text-red-100 px-2 py-0.5 rounded text-xs font-mono font-bold">
+                  {p.name} ({p.stock} pz)
+                </span>
+              ))}
             </div>
-        );
+          </div>
+          <button
+            onClick={() => setCurrentTab('inventario')}
+            className="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors"
+          >
+            Surtir
+          </button>
+        </div>
+      )}
 
-        const NavItem = ({ id, icon, label, activeTab, onClick }) => {
-            const isActive = activeTab === id;
-            return (
-                <button onClick={() => onClick(id)} 
-                    className={`flex flex-col md:flex-row items-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl transition-all duration-300 ${isActive ? 'bg-amber-500 text-white shadow-xl scale-105' : 'text-slate-400 hover:bg-white'}`}>
-                    <Icon name={icon} size={18} />
-                    <span className={`text-[9px] md:text-sm font-bold tracking-tight ${isActive ? 'block' : 'hidden md:block'}`}>{label}</span>
-                </button>
-            );
-        };
-
-        const App = () => {
-            const [user, setUser] = useState(null);
-            const [isAuthReady, setIsAuthReady] = useState(false);
-            const [activeTab, setActiveTab] = useState('dashboard');
-            const [projectTab, setProjectTab] = useState('list');
-            const [selectedProjectId, setSelectedProjectId] = useState(null);
-            const [selectedStaffId, setSelectedStaffId] = useState(null);
+      {/* --- CONTENIDO PRINCIPAL --- */}
+      <div className="flex-1 flex flex-col md:flex-row">
+        
+        {/* --- MENU LATERAL (ADMIN) --- */}
+        {currentTab !== 'cliente-booking' && (
+          <aside className="w-full md:w-64 bg-slate-900/50 border-r border-slate-800/80 p-4 space-y-2 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto">
+            <div className="hidden md:block text-xs font-semibold text-slate-500 tracking-wider uppercase mb-3">
+              Administración
+            </div>
             
-            // Colecciones de Datos Reales en Firebase
-            const [projects, setProjects] = useState([]);
-            const [clients, setClients] = useState([]);
-            const [staff, setStaff] = useState([]);
-            const [finances, setFinances] = useState([]);
-            const [inventory, setInventory] = useState([]);
+            <button
+              onClick={() => setCurrentTab('dashboard')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                currentTab === 'dashboard' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+              }`}
+            >
+              <span>📊</span>
+              <span>Dashboard General</span>
+            </button>
 
-            // Estado de validación de agenda
-            const [formDate, setFormDate] = useState('');
-            const [formConflict, setFormConflict] = useState(null);
+            <button
+              onClick={() => setCurrentTab('citas')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                currentTab === 'citas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+              }`}
+            >
+              <span>📅</span>
+              <span>Agenda & Citas</span>
+            </button>
 
-            // Auth
-            useEffect(() => {
-                signInAnonymously(auth).catch(err => console.error("Firebase Auth Error:", err));
-                const unsubscribe = onAuthStateChanged(auth, (u) => {
-                    setUser(u);
-                    if(u) setIsAuthReady(true);
-                });
-                return () => unsubscribe();
-            }, []);
+            <button
+              onClick={() => setCurrentTab('finanzas')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                currentTab === 'finanzas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+              }`}
+            >
+              <span>💵</span>
+              <span>Ingresos y Gastos</span>
+            </button>
 
-            // Real-time Listeners para todas las tablas
-            useEffect(() => {
-                if (!isAuthReady || !user) return;
-                const path = (c) => collection(db, 'artifacts', appId, 'public', 'data', c);
+            <button
+              onClick={() => setCurrentTab('inventario')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                currentTab === 'inventario' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+              }`}
+            >
+              <span>📦</span>
+              <span>Precios & Utilidad</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentTab('barberos')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
+                currentTab === 'barberos' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+              }`}
+            >
+              <span>💈</span>
+              <span>Comisiones Barberos</span>
+            </button>
+          </aside>
+        )}
+
+        {/* --- SECCIÓN DE VISTA ACTIVA --- */}
+        <main className="flex-1 p-4 md:p-6 overflow-y-auto max-w-7xl mx-auto w-full">
+          
+          {/* ========================================================= */}
+          {/* TAB: DASHBOARD */}
+          {/* ========================================================= */}
+          {currentTab === 'dashboard' && (
+            <div className="space-y-6">
+              
+              {/* Tarjetas Principales */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-center text-slate-400 text-xs">
+                    <span>INGRESOS BRUTOS</span>
+                    <span className="bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded text-xs">Ventas</span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalRevenue.toLocaleString()}</span>
+                  </div>
+                  <div className="mt-1 text-slate-500 text-xs">Monto acumulado actual</div>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-center text-slate-400 text-xs">
+                    <span>COSTOS & COMISIONES</span>
+                    <span className="bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded text-xs">Egresos</span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalCost.toLocaleString()}</span>
+                  </div>
+                  <div className="mt-1 text-slate-500 text-xs">
+                    Insumos + Comisiones (40%)
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-center text-slate-400 text-xs">
+                    <span>UTILIDAD TOTAL</span>
+                    <span className="bg-amber-500/15 text-amber-500 px-1.5 py-0.5 rounded text-xs font-bold">Rentabilidad</span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold font-mono text-amber-500">${financialTotals.netUtility.toLocaleString()}</span>
+                  </div>
+                  <div className="mt-1 text-slate-400 text-xs font-semibold">
+                    Margen Neto: {financialTotals.profitMargin}%
+                  </div>
+                </div>
+
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                  <div className="flex justify-between items-center text-slate-400 text-xs">
+                    <span>COMISIONES DE BARBEROS</span>
+                    <span className="bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded text-xs">40% Pago</span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalBarberCommissions.toLocaleString()}</span>
+                  </div>
+                  <div className="mt-1 text-slate-500 text-xs">Total repartido a barberos</div>
+                </div>
+              </div>
+
+              {/* Gráficos y Demanda de Ventas */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                const unsubP = onSnapshot(path('projects'), s => setProjects(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-                const unsubC = onSnapshot(path('clients'), s => setClients(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-                const unsubS = onSnapshot(path('staff'), s => setStaff(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-                const unsubF = onSnapshot(path('finances'), s => setFinances(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-                const unsubI = onSnapshot(path('inventory'), s => setInventory(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-                
-                return () => { unsubP(); unsubC(); unsubS(); unsubF(); unsubI(); };
-            }, [isAuthReady, user]);
-
-            const stats = useMemo(() => {
-                const inc = finances.filter(f => f.type === 'income').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-                const exp = finances.filter(f => f.type === 'expense').reduce((a, c) => a + (Number(c.amount) || 0), 0);
-                return { 
-                    balance: inc - exp, 
-                    active: projects.filter(p => p.status !== 'Terminado').length, 
-                    low: inventory.filter(i => i.stock < 5).length 
-                };
-            }, [finances, projects, inventory]);
-
-            const deleteItem = async (col, id) => {
-                if(window.confirm('¿Deseas eliminar este registro permanentemente?')) {
-                    try {
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', col, id);
-                        await deleteDoc(docRef);
-                        if (selectedProjectId === id) setSelectedProjectId(null);
-                        if (selectedStaffId === id) setSelectedStaffId(null);
-                    } catch (err) {
-                        console.error("Error al borrar:", err);
-                    }
-                }
-            };
-
-            const currentProject = useMemo(() => projects.find(p => p.id === selectedProjectId), [projects, selectedProjectId]);
-            const currentStaff = useMemo(() => staff.find(s => s.id === selectedStaffId), [staff, selectedStaffId]);
-
-            // --- LÓGICA DE AGENDA ---
-            const availableStaffForDate = useMemo(() => {
-                if (!formDate) return staff;
-                return staff.filter(s => {
-                    const isManuallyBlocked = (s.unavailableDates || []).includes(formDate);
-                    const hasProject = projects.some(p => p.team === s.name && p.date === formDate);
-                    return !isManuallyBlocked && !hasProject;
-                });
-            }, [staff, projects, formDate]);
-
-            // --- FUNCIONES EXCEL ---
-            const updateExcelRow = async (rowId, field, value) => {
-                const updated = currentProject.breakdown.map(r => r.id === rowId ? { ...r, [field]: value } : r);
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', selectedProjectId), { breakdown: updated });
-            };
-
-            const handleTabClick = (id) => {
-                setActiveTab(id);
-                setProjectTab('list');
-                setSelectedProjectId(null);
-                setSelectedStaffId(null);
-                setFormConflict(null);
-            };
-
-            if (!isAuthReady) return (
-                <div className="h-screen flex flex-col items-center justify-center bg-white">
-                    <div className="w-16 h-16 bg-amber-500 rounded-3xl flex items-center justify-center shadow-2xl animate-bounce">
-                        <Icon name="sun" size={32} className="text-white" strokeWidth={3} />
+                {/* Mayor demanda de Servicios */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Demanda de Servicios (Ingresos por Tipo)</h3>
+                  {itemDemands.services.length === 0 ? (
+                    <p className="text-xs text-slate-500">Aún no hay transacciones de servicios registradas.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {itemDemands.services.map((item, idx) => {
+                        const percent = (item.value / financialTotals.totalRevenue) * 100;
+                        return (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="font-semibold text-slate-300">{item.name}</span>
+                              <span className="font-mono text-slate-400">${item.value} ({percent.toFixed(0)}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-800 rounded-full h-2">
+                              <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <p className="mt-6 font-black text-slate-400 tracking-[0.2em] text-[10px] uppercase">SolarPro SIG v7.7</p>
+                  )}
                 </div>
-            );
 
-            return (
-                <div className="min-h-screen pb-32 md:pb-12 md:pt-24 safe-top safe-bottom">
-                    {/* Header Principal */}
-                    <nav className="fixed top-4 left-6 right-6 h-16 bg-white/70 backdrop-blur-3xl border border-white/20 z-50 hidden md:flex items-center justify-between px-8 rounded-3xl shadow-xl">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-amber-500 p-2 rounded-xl text-white shadow-lg"><Icon name="sun" size={20} strokeWidth={2.5} /></div>
-                            <span className="text-lg font-black tracking-tighter text-slate-800 uppercase">Solar<span className="text-amber-500">Pro</span></span>
-                        </div>
-                        <div className="flex gap-1 bg-slate-200/30 p-1 rounded-2xl overflow-x-auto">
-                            <NavItem id="dashboard" icon="layout-dashboard" label="Panel" activeTab={activeTab} onClick={handleTabClick} />
-                            <NavItem id="clients" icon="user-check" label="Clientes" activeTab={activeTab} onClick={handleTabClick} />
-                            <NavItem id="projects" icon="briefcase" label="Obras" activeTab={activeTab} onClick={handleTabClick} />
-                            <NavItem id="staff" icon="users" label="Equipo" activeTab={activeTab} onClick={handleTabClick} />
-                            <NavItem id="inventory" icon="package" label="Stock" activeTab={activeTab} onClick={handleTabClick} />
-                            <NavItem id="finances" icon="dollar-sign" label="Caja" activeTab={activeTab} onClick={handleTabClick} />
-                        </div>
-                        <div className="h-8 w-8 rounded-xl bg-amber-100 border border-white shadow-sm flex items-center justify-center text-[8px] font-black text-amber-600">ERP</div>
-                    </nav>
+                {/* Mayor demanda de Productos */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Demanda de Productos en Tienda</h3>
+                  {itemDemands.products.length === 0 ? (
+                    <p className="text-xs text-slate-500">Aún no hay ventas de productos de inventario.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {itemDemands.products.map((item, idx) => {
+                        const percent = (item.value / financialTotals.totalRevenue) * 100;
+                        return (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="font-semibold text-slate-300">{item.name}</span>
+                              <span className="font-mono text-slate-400">${item.value} ({percent.toFixed(0)}%)</span>
+                            </div>
+                            <div className="w-full bg-slate-800 rounded-full h-2">
+                              <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
-                    {/* Navegación Móvil */}
-                    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-white/90 backdrop-blur-3xl border border-white/40 shadow-2xl rounded-[2.5rem] z-50 flex items-center justify-around p-2 md:hidden">
-                        <NavItem id="dashboard" icon="layout-dashboard" label="Panel" activeTab={activeTab} onClick={handleTabClick} />
-                        <NavItem id="clients" icon="user-check" label="Clientes" activeTab={activeTab} onClick={handleTabClick} />
-                        <NavItem id="projects" icon="briefcase" label="Obras" activeTab={activeTab} onClick={handleTabClick} />
-                        <NavItem id="staff" icon="users" label="Equipo" activeTab={activeTab} onClick={handleTabClick} />
-                        <NavItem id="finances" icon="dollar-sign" label="Caja" activeTab={activeTab} onClick={handleTabClick} />
-                    </nav>
+              </div>
 
-                    <main className="max-w-7xl mx-auto px-4 md:px-6 py-4">
+              {/* Proyecciones de Venta */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-800 pb-4 mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Previsiones y Proyección Financiera</h3>
+                    <p className="text-xs text-slate-400">Estima tus ingresos y rentabilidad basados en el crecimiento del negocio</p>
+                  </div>
+                  <div className="mt-2 sm:mt-0 flex items-center space-x-2">
+                    <label className="text-xs text-slate-400">Crecimiento estimado:</label>
+                    <select
+                      value={projectionGrowth}
+                      onChange={(e) => setProjectionGrowth(parseInt(e.target.value))}
+                      className="bg-slate-950 border border-slate-800 text-xs rounded px-2 py-1 text-amber-500 font-bold focus:outline-none"
+                    >
+                      <option value="5">5%</option>
+                      <option value="10">10%</option>
+                      <option value="20">20%</option>
+                      <option value="35">35%</option>
+                      <option value="50">50%</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-850">
+                    <span className="text-xs text-slate-500">Ingresos Proyectados</span>
+                    <div className="text-xl font-bold font-mono text-emerald-400 mt-1">${projections.projectedRevenue}</div>
+                    <p className="text-xs text-slate-400 mt-2">Con un incremento neto de <span className="text-emerald-400 font-bold font-mono">+${projections.increaseValue}</span> sobre ventas reales.</p>
+                  </div>
+
+                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-850">
+                    <span className="text-xs text-slate-500">Utilidad Neta Proyectada</span>
+                    <div className="text-xl font-bold font-mono text-amber-500 mt-1">${projections.projectedUtility}</div>
+                    <p className="text-xs text-slate-400 mt-2">Conservando el margen operativo actual de la barbería.</p>
+                  </div>
+
+                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 flex flex-col justify-between">
+                    <div>
+                      <span className="text-xs text-slate-500">Comportamiento del Negocio</span>
+                      <p className="text-xs text-slate-300 mt-2">Llevar un balance regular mensual te ayuda a estimar costos fijos como alquiler y optimizar comisiones de barberos.</p>
+                    </div>
+                    <span className="text-[10px] text-amber-500/70 font-semibold uppercase mt-2">💡 Consejo: Promueve la venta cruzada de ceras para elevar utilidad.</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB: CITAS & AGENDA (VISTA ADM) */}
+          {/* ========================================================= */}
+          {currentTab === 'citas' && (
+            <div className="space-y-6">
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Formulario Administrador para Agendar */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Nueva Cita (Mesa de Control / Teléfono)</h3>
+                    <p className="text-xs text-slate-400">Inserta las citas de clientes que llaman o visitan directamente el local</p>
+                  </div>
+                  
+                  <form onSubmit={handleAdminAddAppointment} className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Nombre del Cliente *</label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Juan Pérez"
+                        value={adminClientName}
+                        onChange={(e) => setAdminClientName(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-amber-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Número Celular / Teléfono *</label>
+                      <input
+                        type="text"
+                        placeholder="Ej. 555-0101"
+                        value={adminPhone}
+                        onChange={(e) => setAdminPhone(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-amber-500"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Servicio Solicitado *</label>
+                      <select
+                        value={adminService}
+                        onChange={(e) => setAdminService(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                        required
+                      >
+                        <option value="">Selecciona un Servicio</option>
+                        {services.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Barbero Asignado *</label>
+                      <select
+                        value={adminBarber}
+                        onChange={(e) => setAdminBarber(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                        required
+                      >
+                        <option value="">Selecciona un Barbero</option>
+                        {barbers.map(b => (
+                          <option key={b.id} value={b.id}>{b.avatar} {b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Fecha</label>
+                        <input
+                          type="date"
+                          value={adminDate}
+                          onChange={(e) => setAdminDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Hora</label>
+                        <input
+                          type="time"
+                          value={adminTime}
+                          onChange={(e) => setAdminTime(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs focus:outline-none"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full mt-2 bg-amber-500 text-slate-950 font-bold py-2 rounded text-xs hover:bg-amber-600 transition-colors"
+                    >
+                      Agendar en Calendario
+                    </button>
+                  </form>
+                </div>
+
+                {/* Listado de Citas / Agenda General */}
+                <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Agenda de Citas Activas</h3>
+                    <span className="text-xs bg-slate-850 px-2 py-1 rounded text-slate-400">
+                      Total: {appointments.filter(a => a.status === 'pendiente').length} pendientes
+                    </span>
+                  </div>
+
+                  {appointments.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-8">No hay citas registradas en el sistema.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {appointments.map(app => {
+                        const service = services.find(s => s.id === app.serviceId);
+                        const barber = barbers.find(b => b.id === app.barberId);
                         
-                        {/* --- 1. DASHBOARD --- */}
-                        {activeTab === 'dashboard' && (
-                            <div className="animate-section space-y-6">
-                                <Hero title="Panel Corporativo" subtitle="Indicadores clave de rendimiento operativo y financiero." icon="zap" color="bg-gradient-to-br from-slate-800 to-slate-950" />
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm hover:shadow-xl transition-all group">
-                                        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl w-fit mb-6 group-hover:bg-emerald-500 group-hover:text-white transition-all"><Icon name="trending-up" size={28} /></div>
-                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Caja SIG</p>
-                                        <h3 className="text-5xl font-black text-slate-800 tracking-tighter">${stats.balance.toLocaleString()}</h3>
-                                    </div>
-                                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm hover:shadow-xl transition-all group">
-                                        <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl w-fit mb-6 group-hover:bg-blue-500 group-hover:text-white transition-all"><Icon name="briefcase" size={28} /></div>
-                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Obras Activas</p>
-                                        <h3 className="text-5xl font-black text-slate-800 tracking-tighter">{stats.active}</h3>
-                                    </div>
-                                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm hover:shadow-xl transition-all group">
-                                        <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl w-fit mb-6 group-hover:bg-rose-500 group-hover:text-white transition-all"><Icon name="alert-circle" size={28} /></div>
-                                        <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Stock Crítico</p>
-                                        <h3 className="text-5xl font-black text-slate-800 tracking-tighter">{stats.low}</h3>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- 2. CLIENTES (NUEVO) --- */}
-                        {activeTab === 'clients' && (
-                            <div className="animate-section">
-                                <Hero title="Directorio de Clientes" subtitle="Registro centralizado de contactos y ubicación de instalaciones." icon="user-check" color="bg-gradient-to-br from-indigo-600 to-purple-800" />
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                    <div className="lg:col-span-4">
-                                        <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 sticky top-24">
-                                            <h3 className="text-xl font-black mb-6 flex items-center gap-3"><Icon name="user-plus" className="text-indigo-500" /> Nuevo Cliente</h3>
-                                            <form onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                const fd = new FormData(e.target);
-                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'clients'), {
-                                                    name: fd.get('name'), phone: fd.get('phone'), address: fd.get('address')
-                                                });
-                                                e.target.reset();
-                                            }} className="space-y-4">
-                                                <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre completo" />
-                                                <input name="phone" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Teléfono" />
-                                                <input name="address" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Dirección Fiscal/Instalación" />
-                                                <button type="submit" className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl hover:bg-indigo-700 transition-all">REGISTRAR</button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                    <div className="lg:col-span-8 space-y-4">
-                                        {clients.map(c => (
-                                            <div key={c.id} className="bg-white p-6 rounded-[2rem] border border-slate-50 shadow-sm flex flex-col md:flex-row md:items-center justify-between group hover:shadow-xl transition-all">
-                                                <div className="flex items-center gap-6">
-                                                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center font-black text-2xl">{c.name?.charAt(0)}</div>
-                                                    <div>
-                                                        <h4 className="font-black text-xl text-slate-800 leading-none mb-1">{c.name}</h4>
-                                                        <p className="text-xs font-bold text-slate-400">{c.address}</p>
-                                                        <div className="mt-2 flex items-center gap-2 text-indigo-600 font-bold text-[10px] uppercase tracking-widest"><Icon name="phone" size={10}/> {c.phone}</div>
-                                                    </div>
-                                                </div>
-                                                <button onClick={() => deleteItem('clients', c.id)} className="p-3 text-slate-200 hover:text-rose-500 transition-colors bg-slate-50 rounded-xl"><Icon name="trash-2" /></button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- 3. PROYECTOS / OBRAS --- */}
-                        {activeTab === 'projects' && (
-                            <div className="animate-section">
-                                <Hero title="Obras y Proyectos" subtitle="Planificación inteligente vinculando clientes y técnicos." icon="briefcase" color="bg-gradient-to-br from-blue-600 to-indigo-800" />
-                                
-                                <div className="flex justify-between items-center mb-8 px-2">
-                                    <h2 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Gestión</h2>
-                                    <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-100">
-                                        <button onClick={() => setProjectTab('list')} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${projectTab === 'list' ? 'bg-amber-500 text-white' : 'text-slate-400'}`}>LISTA</button>
-                                        <button onClick={() => setProjectTab('calendar')} className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${projectTab === 'calendar' ? 'bg-amber-500 text-white' : 'text-slate-400'}`}>CALENDARIO</button>
-                                    </div>
-                                </div>
-
-                                {projectTab === 'list' && (
-                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                        <div className="lg:col-span-4">
-                                            <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 sticky top-24">
-                                                <h3 className="text-xl font-black mb-6 flex items-center gap-3"><Icon name="plus-circle" className="text-blue-500"/> Nueva Obra</h3>
-                                                <form onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const fd = new FormData(e.target);
-                                                    const clientName = fd.get('client');
-                                                    const techName = fd.get('team');
-                                                    const selDate = fd.get('date');
-
-                                                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'projects'), {
-                                                        client: clientName, service: fd.get('service'), team: techName, 
-                                                        date: selDate, value: Number(fd.get('value')), status: 'Pendiente', breakdown: []
-                                                    });
-                                                    e.target.reset();
-                                                    setFormDate('');
-                                                }} className="space-y-4">
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Seleccionar Cliente</label>
-                                                        <select name="client" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
-                                                            <option value="">Buscar en Directorio...</option>
-                                                            {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    
-                                                    <select name="service" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
-                                                        <option>Paneles Solares</option><option>Calentador Solar</option><option>Mantenimiento Eléctrico</option>
-                                                    </select>
-                                                    
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Fecha</label>
-                                                        <input name="date" type="date" required onChange={(e) => setFormDate(e.target.value)} className="w-full p-4 bg-slate-50 rounded-2xl outline-none" />
-                                                    </div>
-
-                                                    <div className="space-y-1">
-                                                        <label className="text-[10px] font-black text-slate-400 ml-3 uppercase">Técnico Disponible</label>
-                                                        <select name="team" required disabled={!formDate} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
-                                                            <option value="">{formDate ? "Seleccionar..." : "Elige fecha primero"}</option>
-                                                            {availableStaffForDate.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                                                        </select>
-                                                    </div>
-
-                                                    <input name="value" type="number" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Precio Venta $" />
-                                                    <button type="submit" disabled={availableStaffForDate.length === 0} className="w-full py-4 bg-slate-800 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all disabled:opacity-30">PROGRAMAR</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                        <div className="lg:col-span-8 space-y-4">
-                                            {projects.map(p => (
-                                                <div key={p.id} onClick={() => { setSelectedProjectId(p.id); setProjectTab('excel'); }} className="bg-white p-6 rounded-[2.2rem] border border-slate-50 shadow-sm flex flex-col md:flex-row md:items-center justify-between group hover:shadow-2xl transition-all cursor-pointer">
-                                                    <div className="flex items-center gap-6">
-                                                        <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center font-black text-2xl group-hover:scale-110 transition-transform">{p.client?.charAt(0)}</div>
-                                                        <div>
-                                                            <h4 className="font-black text-xl text-slate-800 leading-none mb-1">{p.client}</h4>
-                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{p.service} • {p.date}</p>
-                                                            <div className="flex items-center gap-2 mt-3">
-                                                                <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded-full text-slate-500 uppercase">{p.status}</span>
-                                                                <span className="text-[10px] font-black bg-amber-100 px-2 py-1 rounded-full text-amber-600 uppercase flex items-center gap-1"><Icon name="user" size={10} /> {p.team}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-6 mt-4 md:mt-0">
-                                                        <div className="text-right">
-                                                            <p className="text-[10px] font-black text-slate-300 uppercase">Cotización</p>
-                                                            <p className="text-xl font-black text-slate-800 tracking-tighter">${p.value?.toLocaleString()}</p>
-                                                        </div>
-                                                        <button onClick={(e) => { e.stopPropagation(); deleteItem('projects', p.id); }} className="p-3 text-slate-200 hover:text-rose-500 transition-colors bg-slate-50 rounded-xl"><Icon name="trash-2" /></button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                        return (
+                          <div
+                            key={app.id}
+                            className={`p-3 rounded-lg border flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0 ${
+                              app.status === 'completada' ? 'bg-slate-950/40 border-slate-900 opacity-60' :
+                              app.status === 'cancelada' ? 'bg-red-950/10 border-red-950/30 opacity-50 line-through' :
+                              'bg-slate-950 border-slate-850'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-bold text-slate-200 text-xs sm:text-sm">{app.clientName}</span>
+                                <span className="text-slate-500 text-[11px] font-mono">({app.phone})</span>
+                                {app.status === 'pendiente' && (
+                                  <span className="bg-amber-500/10 text-amber-500 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">Pendiente</span>
                                 )}
-
-                                {projectTab === 'calendar' && (
-                                    <div className="bg-white p-8 rounded-[3rem] border shadow-2xl animate-section overflow-x-auto">
-                                        <div className="calendar-grid gap-2 min-w-[700px]">
-                                            {['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'].map(d => (
-                                                <div key={d} className="text-center py-3 text-[10px] font-black text-slate-300 uppercase">{d}</div>
-                                            ))}
-                                            {Array.from({ length: 31 }, (_, i) => i + 1).map(day => {
-                                                const dayProjects = projects.filter(p => new Date(p.date).getUTCDate() === day);
-                                                return (
-                                                    <div key={day} className={`min-h-[120px] p-3 rounded-2xl border transition-all ${dayProjects.length > 0 ? 'bg-amber-50/50 border-amber-200 shadow-sm' : 'border-slate-50 bg-slate-50/20'}`}>
-                                                        <span className="text-xs font-black text-slate-300">{day}</span>
-                                                        <div className="mt-2 space-y-1">
-                                                            {dayProjects.map(p => (
-                                                                <div key={p.id} className="text-[8px] font-black bg-white p-1 rounded border border-amber-100 truncate shadow-sm text-slate-700">{p.client}</div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
+                                {app.status === 'completada' && (
+                                  <span className="bg-emerald-500/15 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">Completada</span>
                                 )}
-
-                                {projectTab === 'excel' && currentProject && (
-                                    <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 animate-section">
-                                        <button onClick={() => setProjectTab('list')} className="text-slate-400 flex items-center gap-2 text-xs font-black uppercase mb-8 hover:text-amber-500 transition-all font-black"><Icon name="arrow-left" size={14} /> Volver a lista</button>
-                                        <div className="flex flex-col md:flex-row justify-between items-start mb-10 gap-6">
-                                            <div>
-                                                <h3 className="text-4xl font-black text-slate-800 tracking-tight">{currentProject.client}</h3>
-                                                <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">{currentProject.service} • {currentProject.date}</p>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-6 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 w-full md:w-auto">
-                                                <div className="text-center"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Valor Venta</p><p className="text-2xl font-black text-slate-800">${currentProject.value?.toLocaleString()}</p></div>
-                                                <div className="text-center border-l border-slate-200 pl-6"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Utilidad</p><p className={`text-2xl font-black ${ (currentProject.value - (currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0)) >= 0 ? 'text-emerald-500' : 'text-rose-500' }`}>${(currentProject.value - (currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0)).toLocaleString()}</p></div>
-                                            </div>
-                                        </div>
-                                        <div className="overflow-hidden rounded-[2.5rem] border border-slate-100 shadow-inner overflow-x-auto">
-                                            <table className="w-full text-left min-w-[600px]">
-                                                <thead className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-                                                    <tr><th className="px-8 py-5">Descripción Partida</th><th className="px-8 py-5 text-center">Cant.</th><th className="px-8 py-5 text-right">Costo Unit.</th><th className="px-8 py-5 text-right">Subtotal</th><th className="px-8 py-5"></th></tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {(currentProject.breakdown || []).map(row => (
-                                                        <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
-                                                            <td className="px-8 py-4"><input value={row.desc} onChange={(e) => updateExcelRow(row.id, 'desc', e.target.value)} className="w-full bg-transparent font-bold text-slate-700 outline-none" /></td>
-                                                            <td className="px-8 py-4 text-center"><input type="number" value={row.qty} onChange={(e) => updateExcelRow(row.id, 'qty', Number(e.target.value))} className="w-16 bg-transparent text-center font-bold" /></td>
-                                                            <td className="px-8 py-4 text-right font-bold text-rose-500">$<input type="number" value={row.cost} onChange={(e) => updateExcelRow(row.id, 'cost', Number(e.target.value))} className="w-24 bg-transparent text-right outline-none inline" /></td>
-                                                            <td className="px-8 py-4 text-right font-black text-slate-800">${(row.qty * row.cost).toLocaleString()}</td>
-                                                            <td className="px-8 py-4 text-center"><button onClick={async () => {
-                                                                const updated = currentProject.breakdown.filter(r => r.id !== row.id);
-                                                                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', selectedProjectId), { breakdown: updated });
-                                                            }} className="text-rose-300 transition-all hover:scale-110"><Icon name="x-circle" size={18} /></button></td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                                <tfoot className="bg-slate-50 font-black">
-                                                    <tr>
-                                                        <td className="px-8 py-6 text-slate-400 uppercase tracking-widest text-[10px]">Costo Total Operativo</td>
-                                                        <td colSpan="2"></td>
-                                                        <td className="px-8 py-6 text-right text-2xl text-slate-800 tracking-tighter">${(currentProject.breakdown || []).reduce((a,c) => a + (c.qty*c.cost), 0).toLocaleString()}</td>
-                                                        <td className="px-8 py-6 text-center"><button onClick={async () => {
-                                                            const updated = [...(currentProject.breakdown || []), { id: Date.now(), desc: '', qty: 1, cost: 0 }];
-                                                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'projects', selectedProjectId), { breakdown: updated });
-                                                        }} className="bg-amber-500 text-white p-2.5 rounded-xl shadow-lg hover:scale-110 transition-all"><Icon name="plus" size={18} /></button></td>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
-                                        </div>
-                                    </div>
+                                {app.status === 'cancelada' && (
+                                  <span className="bg-red-500/15 text-red-400 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">Cancelada</span>
                                 )}
+                              </div>
+                              <div className="text-xs text-slate-400">
+                                ✂️ {service ? service.name : 'Servicio no especificado'} (${service?.price}) • 💈 Asignado a: <strong className="text-amber-500/90">{barber ? barber.name : 'Barbero general'}</strong>
+                              </div>
+                              <div className="text-[11px] text-slate-500 font-mono">
+                                Fecha: {app.date} • Hora: {app.time} hrs
+                              </div>
                             </div>
-                        )}
 
-                        {/* --- 4. EQUIPO / TÉCNICOS --- */}
-                        {activeTab === 'staff' && (
-                            <div className="animate-section">
-                                <Hero title="Capital Humano" subtitle="Control de técnicos especialistas y agenda personalizada." icon="users" color="bg-gradient-to-br from-emerald-600 to-teal-800" />
-                                
-                                {!selectedStaffId ? (
-                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                                        <div className="lg:col-span-4">
-                                            <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-slate-50 sticky top-24">
-                                                <h3 className="text-xl font-black mb-8 flex items-center gap-3"><Icon name="user-plus" className="text-emerald-500" /> Registro de Personal</h3>
-                                                <form onSubmit={async (e) => {
-                                                    e.preventDefault();
-                                                    const fd = new FormData(e.target);
-                                                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'staff'), { 
-                                                        name: fd.get('name'), phone: fd.get('phone'), role: fd.get('role'), unavailableDates: [] 
-                                                    });
-                                                    e.target.reset();
-                                                }} className="space-y-4">
-                                                    <input name="name" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre completo" />
-                                                    <input name="phone" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Teléfono" />
-                                                    <select name="role" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
-                                                        <option>Técnico Especialista</option><option>Instalador Senior</option><option>Auxiliar Obra</option>
-                                                    </select>
-                                                    <button type="submit" className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl shadow-xl hover:bg-emerald-700 transition-all uppercase tracking-widest text-[10px]">AÑADIR AL EQUIPO</button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                        <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                            {staff.map(s => (
-                                                <div key={s.id} onClick={() => setSelectedStaffId(s.id)} className="bg-white p-8 rounded-[2.5rem] border border-slate-50 shadow-sm relative group hover:shadow-2xl transition-all cursor-pointer overflow-hidden flex flex-col items-center text-center">
-                                                    <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-[1.8rem] flex items-center justify-center font-black text-3xl mb-6 shadow-inner group-hover:bg-emerald-600 group-hover:text-white transition-all duration-500">{s.name?.charAt(0)}</div>
-                                                    <h4 className="font-black text-xl text-slate-800 leading-none">{s.name}</h4>
-                                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-2">{s.role}</p>
-                                                    <div className="mt-4 flex items-center gap-2 text-emerald-600 font-bold text-xs bg-emerald-50 px-4 py-1.5 rounded-full"><Icon name="phone" size={12}/> {s.phone}</div>
-                                                    <button onClick={(e) => { e.stopPropagation(); deleteItem('staff', s.id); }} className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 text-slate-200 hover:text-rose-500 p-2 bg-white rounded-xl shadow-sm transition-all"><Icon name="trash-2" size={16} /></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ) : currentStaff && (
-                                    <div className="bg-white p-6 md:p-10 rounded-[3rem] shadow-2xl border border-slate-100 animate-section">
-                                        <button onClick={() => setSelectedStaffId(null)} className="text-slate-400 flex items-center gap-2 text-xs font-black uppercase mb-8 hover:text-emerald-500 transition-all font-black"><Icon name="arrow-left" size={14} /> Volver</button>
-                                        <div className="flex flex-col md:flex-row justify-between items-start mb-10 gap-6">
-                                            <div><h3 className="text-4xl font-black text-slate-800 leading-none">{currentStaff.name}</h3><p className="text-xs font-black text-emerald-500 uppercase tracking-widest mt-2">{currentStaff.role}</p></div>
-                                            <button onClick={async () => {
-                                                const d = prompt("Ingresa fecha ocupada (AAAA-MM-DD):");
-                                                if(d) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff', selectedStaffId), { unavailableDates: arrayUnion(d) });
-                                            }} className="bg-rose-500 text-white px-8 py-3 rounded-2xl font-black shadow-lg hover:bg-rose-600 active:scale-95 transition-all w-full md:w-auto">BLOQUEAR FECHA</button>
-                                        </div>
-                                        <div className="bg-slate-50 p-6 md:p-8 rounded-[2.8rem] border border-slate-100">
-                                            <h4 className="font-black uppercase text-xs tracking-widest text-slate-400 mb-6">Agenda Personal</h4>
-                                            <div className="space-y-3">
-                                                {projects.filter(p => p.team === currentStaff.name).map(p => (
-                                                    <div key={p.id} className="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm border border-blue-50">
-                                                        <span className="font-black text-slate-800 text-sm">{p.client} - {p.service}</span>
-                                                        <span className="text-[10px] font-black bg-blue-100 text-blue-700 px-3 py-1 rounded-full">{p.date}</span>
-                                                    </div>
-                                                ))}
-                                                {(currentStaff.unavailableDates || []).map((date, idx) => (
-                                                    <div key={idx} className="flex items-center justify-between p-5 bg-rose-50 rounded-2xl border border-rose-100 group">
-                                                        <span className="font-black text-rose-800 text-sm uppercase">Bloqueo Manual</span>
-                                                        <div className="flex items-center gap-4">
-                                                            <span className="text-[10px] font-black bg-rose-200 text-rose-800 px-3 py-1 rounded-full">{date}</span>
-                                                            <button onClick={async () => { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'staff', selectedStaffId), { unavailableDates: arrayRemove(date) }); }} className="text-rose-400 transition-all hover:text-rose-600"><Icon name="trash-2" size={16}/></button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* --- 5. STOCK / INVENTARIO --- */}
-                        {activeTab === 'inventory' && (
-                            <div className="animate-section">
-                                <Hero title="Inventario Central" subtitle="Evita pausas en obra controlando tus materiales y herramientas críticas." icon="package" color="bg-gradient-to-br from-slate-700 to-slate-900" />
-                                <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm mb-10">
-                                    <form onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        const fd = new FormData(e.target);
-                                        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), { name: fd.get('name'), stock: Number(fd.get('stock')), price: Number(fd.get('price')) });
-                                        e.target.reset();
-                                    }} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-                                        <input name="name" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Nombre Material" />
-                                        <input name="stock" type="number" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Stock" />
-                                        <input name="price" type="number" step="0.01" required className="p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Costo Unit." />
-                                        <button type="submit" className="py-4 bg-slate-800 text-white font-black rounded-2xl transition-all hover:bg-black">AÑADIR</button>
-                                    </form>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                                    {inventory.map(item => (
-                                        <div key={item.id} className="bg-white p-10 rounded-[2.5rem] border border-slate-50 relative group h-[250px] flex flex-col justify-between transition-all hover:shadow-2xl">
-                                            <div>
-                                                <div className={`absolute top-8 right-8 h-4 w-4 rounded-full ${item.stock < 5 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500 shadow-sm'}`}></div>
-                                                <h4 className="font-black text-2xl truncate text-slate-800 tracking-tight">{item.name}</h4>
-                                            </div>
-                                            <p className="text-5xl font-black text-slate-800 tracking-tighter tabular-nums">{item.stock} <span className="text-xs text-slate-400 font-bold uppercase">UDS</span></p>
-                                            <button onClick={() => deleteItem('inventory', item.id)} className="absolute bottom-10 right-10 text-slate-200 hover:text-rose-500 transition-all"><Icon name="trash-2" size={20} /></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* --- 6. FINANZAS --- */}
-                        {activeTab === 'finances' && (
-                            <div className="animate-section">
-                                <Hero title="Caja General" subtitle="Métricas históricas de ingresos y rentabilidad operativa." icon="dollar-sign" color="bg-gradient-to-br from-emerald-500 to-teal-800" />
-                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                                    <div className="lg:col-span-4 space-y-6">
-                                        <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border">
-                                            <form onSubmit={async (e) => {
-                                                e.preventDefault();
-                                                const fd = new FormData(e.target);
-                                                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'finances'), { description: fd.get('description'), amount: Number(fd.get('amount')), type: fd.get('type'), date: new Date().toISOString().split('T')[0] });
-                                                e.target.reset();
-                                            }} className="space-y-4">
-                                                <input name="description" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none" placeholder="Concepto" />
-                                                <input name="amount" type="number" step="0.01" required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-emerald-600 text-lg" placeholder="Monto $" />
-                                                <select name="type" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
-                                                    <option value="income">Ingreso (+)</option><option value="expense">Gasto (-)</option>
-                                                </select>
-                                                <button type="submit" className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl shadow-xl transition-all active:scale-95 hover:bg-emerald-700">GUARDAR</button>
-                                            </form>
-                                        </div>
-                                        <div className="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl relative overflow-hidden text-center">
-                                            <p className="text-emerald-400 font-black text-[10px] uppercase tracking-widest mb-2 relative z-10">Utilidad Acumulada</p>
-                                            <h2 className="text-5xl font-black relative z-10 tracking-tighter tabular-nums">${stats.balance.toLocaleString()}</h2>
-                                            <Icon name="dollar-sign" size={200} className="absolute -right-20 -bottom-20 opacity-10 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                    <div className="lg:col-span-8 bg-white rounded-[3rem] border border-slate-50 shadow-sm overflow-hidden">
-                                        <div className="max-h-[600px] overflow-y-auto divide-y divide-slate-100">
-                                            {finances.sort((a,b) => b.id > a.id ? 1 : -1).map(f => (
-                                                <div key={f.id} className="flex items-center justify-between p-8 hover:bg-slate-50/50 group transition-all px-10">
-                                                    <div className="flex items-center gap-6">
-                                                        <div className={`p-4 rounded-2xl shadow-sm ${f.type === 'income' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                            <Icon name={f.type === 'income' ? 'arrow-up-right' : 'arrow-down-right'} strokeWidth={3} />
-                                                        </div>
-                                                        <span className="font-black text-lg text-slate-800">{f.description}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-8">
-                                                        <span className={`text-2xl font-black ${f.type === 'income' ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                            {f.type === 'income' ? '+' : '-'}${f.amount?.toLocaleString()}
-                                                        </span>
-                                                        <button onClick={() => deleteItem('finances', f.id)} className="p-3 text-slate-200 hover:text-rose-500 transition-all hover:bg-white hover:shadow-md rounded-xl"><Icon name="trash-2" size={20} /></button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </main>
-
-                    <footer className="max-w-7xl mx-auto px-10 pb-20 text-center opacity-30">
-                        <p className="font-black text-[8px] uppercase tracking-[0.5em] text-slate-400">Solar Manager Pro v7.7 • Cloud ERP Solution</p>
-                    </footer>
+                            {app.status === 'pendiente' && (
+                              <div className="flex space-x-2 w-full sm:w-auto">
+                                <button
+                                  onClick={() => handleCompleteAppointment(app.id)}
+                                  className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-2.5 py-1.5 rounded text-xs transition-colors"
+                                >
+                                  ✓ Completar Corte
+                                </button>
+                                <button
+                                  onClick={() => handleCancelAppointment(app.id)}
+                                  className="bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-300 px-2.5 py-1.5 rounded text-xs transition-colors"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-            );
-        };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB: FINANZAS (INGRESOS & GASTOS) */}
+          {/* ========================================================= */}
+          {currentTab === 'finanzas' && (
+            <div className="space-y-6">
+              
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Formulario de Transacciones Rápidas */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Caja de Registro Diario</h3>
+                    <p className="text-xs text-slate-400">Agrega ingresos por productos/servicios o registra gastos fijos y variables</p>
+                  </div>
+
+                  <form onSubmit={handleAddTransaction} className="space-y-3.5">
+                    
+                    {/* Tipo de flujo */}
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded border border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => { setTxType('ingreso'); handleTxCategoryChange('servicio'); }}
+                        className={`py-1.5 text-xs font-bold rounded ${txType === 'ingreso' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}
+                      >
+                        Ingreso (+)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setTxType('gasto'); handleTxCategoryChange('operativo'); }}
+                        className={`py-1.5 text-xs font-bold rounded ${txType === 'gasto' ? 'bg-red-500 text-white' : 'text-slate-400'}`}
+                      >
+                        Gasto (-)
+                      </button>
+                    </div>
+
+                    {/* Categorías condicionales */}
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Categoría de Movimiento</label>
+                      <select
+                        value={txCategory}
+                        onChange={(e) => handleTxCategoryChange(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                      >
+                        {txType === 'ingreso' ? (
+                          <>
+                            <option value="servicio">Servicio de Barbería</option>
+                            <option value="producto">Producto de Inventario</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="operativo">Gasto Operativo (Renta, luz, etc)</option>
+                            <option value="nomina">Comisiones o Pago</option>
+                            <option value="insumos">Insumos de Barbería</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+
+                    {/* Selección dinámica según categoría */}
+                    {(txCategory === 'servicio' || txCategory === 'producto') ? (
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">
+                          Seleccionar {txCategory === 'servicio' ? 'Servicio' : 'Producto en Stock'}
+                        </label>
+                        <select
+                          value={selectedItemId}
+                          onChange={(e) => handleItemSelectChange(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                          required
+                        >
+                          <option value="">Selecciona una opción</option>
+                          {txCategory === 'servicio'
+                            ? services.map(s => <option key={s.id} value={s.id}>{s.name} (${s.price})</option>)
+                            : products.map(p => <option key={p.id} value={p.id} disabled={p.stock < 1}>{p.name} (${p.price} - Stock: {p.stock})</option>)
+                          }
+                        </select>
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Descripción de Gasto / Concepto</label>
+                        <input
+                          type="text"
+                          placeholder="Ej. Pago de luz local"
+                          value={txItemName}
+                          onChange={(e) => setTxItemName(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs focus:outline-none"
+                          required
+                        />
+                      </div>
+                    )}
+
+                    {/* Barberos en caso de ser ingreso por servicio */}
+                    {txCategory === 'servicio' && txType === 'ingreso' && (
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Barbero que Atendió</label>
+                        <select
+                          value={txBarberId}
+                          onChange={(e) => setTxBarberId(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                          required
+                        >
+                          <option value="">Selecciona el barbero asignado</option>
+                          {barbers.map(b => (
+                            <option key={b.id} value={b.id}>{b.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Campo de cantidad */}
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Total Monto ($) *</label>
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        value={txAmount}
+                        onChange={(e) => setTxAmount(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs font-mono focus:outline-none"
+                        required
+                        disabled={txCategory === 'servicio' || txCategory === 'producto'}
+                      />
+                      {(txCategory === 'servicio' || txCategory === 'producto') && (
+                        <p className="text-[10px] text-slate-500 mt-1">El precio se llena automáticamente según la tarifa configurada en inventario.</p>
+                      )}
+                    </div>
+
+                    {/* Fecha */}
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Fecha de Registro</label>
+                      <input
+                        type="date"
+                        value={txDate}
+                        onChange={(e) => setTxDate(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs focus:outline-none"
+                        required
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className={`w-full font-bold py-2 rounded text-xs transition-colors ${
+                        txType === 'ingreso' ? 'bg-amber-500 hover:bg-amber-600 text-slate-950' : 'bg-red-600 hover:bg-red-700 text-white'
+                      }`}
+                    >
+                      Registrar en Flujo de Caja
+                    </button>
+
+                  </form>
+                </div>
+
+                {/* Historial de Transacciones */}
+                <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Historial de Finanzas</h3>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400 font-medium">
+                          <th className="py-2.5">Fecha</th>
+                          <th>Concepto</th>
+                          <th>Tipo / Categoría</th>
+                          <th>Barbero</th>
+                          <th className="text-right">Monto</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {transactions.map(tx => {
+                          const barber = barbers.find(b => b.id === tx.barberId);
+                          return (
+                            <tr key={tx.id} className="hover:bg-slate-950/20">
+                              <td className="py-2.5 font-mono text-slate-400">{tx.date}</td>
+                              <td className="font-semibold text-slate-200">{tx.itemName}</td>
+                              <td>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                  tx.type === 'ingreso' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                                }`}>
+                                  {tx.category}
+                                </span>
+                              </td>
+                              <td className="text-slate-400">
+                                {barber ? `${barber.avatar} ${barber.name}` : '-'}
+                              </td>
+                              <td className={`text-right font-mono font-bold ${
+                                tx.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'
+                              }`}>
+                                {tx.type === 'ingreso' ? '+' : '-'}${tx.amount}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB: PRECIOS, COSTO Y UTILIDAD (INVENTARIO) */}
+          {/* ========================================================= */}
+          {currentTab === 'inventario' && (
+            <div className="space-y-6">
+              
+              {/* Formulario de Configuración Manual */}
+              {editingItemId && (
+                <div className="bg-amber-500/10 border border-amber-500/30 p-5 rounded-xl space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Editar Precios y Costo Unitario</h3>
+                      <p className="text-xs text-slate-300">
+                        Ajusta los valores para {editingItemType === 'servicio' ? 'el servicio' : 'el producto'} de forma manual para calcular utilidades netas.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setEditingItemId('')}
+                      className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveItemEdit} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Precio al Público ($)</label>
+                      <input
+                        type="number"
+                        value={editPrice}
+                        onChange={(e) => setEditPrice(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-amber-500 font-bold"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Costo Unitario Insumo ($)</label>
+                      <input
+                        type="number"
+                        value={editCost}
+                        onChange={(e) => setEditCost(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-red-400 font-bold"
+                        required
+                      />
+                    </div>
+                    {editingItemType === 'producto' && (
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Stock de Inventario</label>
+                        <input
+                          type="number"
+                          value={newStock}
+                          onChange={(e) => setNewStock(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-indigo-400 font-bold"
+                          required
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-end">
+                      <button
+                        type="submit"
+                        className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2 rounded text-xs"
+                      >
+                        Aplicar Cambios
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Lista de Servicios */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Cargos, Costos y Utilidades de Servicios</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400">
+                        <th className="py-2.5">Servicio</th>
+                        <th>Precio Público</th>
+                        <th>Costo de Insumos</th>
+                        <th>Comisión de Barbero (40%)</th>
+                        <th>Utilidad Neta de Tienda (60% - Costos)</th>
+                        <th>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {services.map(s => {
+                        const barberComm = s.price * 0.40;
+                        const netUtility = s.price - s.cost - barberComm;
+                        return (
+                          <tr key={s.id} className="hover:bg-slate-950/20">
+                            <td className="py-3 font-semibold text-slate-200">{s.name}</td>
+                            <td className="font-mono text-slate-300">${s.price}</td>
+                            <td className="font-mono text-red-400">${s.cost}</td>
+                            <td className="font-mono text-indigo-400">${barberComm.toFixed(2)}</td>
+                            <td className="font-mono text-emerald-400 font-bold">${netUtility.toFixed(2)}</td>
+                            <td>
+                              <button
+                                onClick={() => startEditing('servicio', s)}
+                                className="text-[11px] bg-slate-850 hover:bg-slate-800 text-amber-500 px-2 py-1 rounded transition-colors"
+                              >
+                                Editar Costos
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Inventario de Productos */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase font-bold">Control de Inventario y Utilidad de Productos</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400">
+                        <th className="py-2.5">Producto</th>
+                        <th>Stock Actual</th>
+                        <th>Precio Público</th>
+                        <th>Costo de Compra</th>
+                        <th>Margen de Utilidad</th>
+                        <th>Estado Alerta</th>
+                        <th>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60">
+                      {products.map(p => {
+                        const utility = p.price - p.cost;
+                        return (
+                          <tr key={p.id} className="hover:bg-slate-950/20">
+                            <td className="py-3 font-semibold text-slate-200">{p.name}</td>
+                            <td className="font-mono text-slate-300 font-bold">{p.stock} pz</td>
+                            <td className="font-mono text-slate-300">${p.price}</td>
+                            <td className="font-mono text-red-400">${p.cost}</td>
+                            <td className="font-mono text-emerald-400 font-bold">${utility}</td>
+                            <td>
+                              {p.stock <= 2 ? (
+                                <span className="bg-red-500/10 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[10px] font-bold">STOCK BAJO</span>
+                              ) : (
+                                <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">ESTABLE</span>
+                              )}
+                            </td>
+                            <td>
+                              <button
+                                onClick={() => startEditing('producto', p)}
+                                className="text-[11px] bg-slate-850 hover:bg-slate-800 text-amber-500 px-2 py-1 rounded transition-colors"
+                              >
+                                Configurar
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB: BARBEROS & COMISIONES */}
+          {/* ========================================================= */}
+          {currentTab === 'barberos' && (
+            <div className="space-y-6">
+              
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                <div className="border-b border-slate-800 pb-3 mb-4">
+                  <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase">Rendimiento e Ingresos de Barberos (Esquema 60/40)</h3>
+                  <p className="text-xs text-slate-400">
+                    Los barberos se quedan con el 40% del costo total de cada corte o servicio realizado. La barbería retiene el 60%.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {barberMetrics.map(barber => (
+                    <div key={barber.id} className="bg-slate-950 border border-slate-850 rounded-xl p-5 space-y-4">
+                      
+                      {/* Cabecera del Barbero */}
+                      <div className="flex items-center space-x-3">
+                        <span className="text-3xl bg-slate-900 p-2 rounded-lg">{barber.avatar}</span>
+                        <div>
+                          <h4 className="font-bold text-slate-100">{barber.name}</h4>
+                          <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold">Activo en Turno</span>
+                        </div>
+                      </div>
+
+                      {/* Cortes Acumulados */}
+                      <div className="bg-slate-900/60 p-3 rounded-lg flex justify-between items-center">
+                        <span className="text-xs text-slate-400">Cortes realizados del Mes:</span>
+                        <span className="text-sm font-bold text-slate-100 font-mono">{barber.totalCuts}</span>
+                      </div>
+
+                      {/* Desglose de Comisiones Ganadas (40%) */}
+                      <div className="space-y-2">
+                        <span className="text-[10px] text-slate-500 tracking-wider font-bold uppercase">Comisiones Generadas (40%):</span>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-slate-900/40 p-2 rounded">
+                            <span className="block text-[10px] text-slate-400">Hoy</span>
+                            <span className="text-xs font-bold font-mono text-emerald-400">${barber.commissionToday}</span>
+                          </div>
+                          <div className="bg-slate-900/40 p-2 rounded">
+                            <span className="block text-[10px] text-slate-400">Esta Semana</span>
+                            <span className="text-xs font-bold font-mono text-emerald-400">${barber.commissionWeek}</span>
+                          </div>
+                          <div className="bg-slate-900/40 p-2 rounded">
+                            <span className="block text-[10px] text-slate-400">Este Mes</span>
+                            <span className="text-xs font-bold font-mono text-emerald-400">${barber.commissionMonth}</span>
+                          </div>
+                          <div className="bg-slate-900/40 p-2 rounded">
+                            <span className="block text-[10px] text-slate-400">Este Año</span>
+                            <span className="text-xs font-bold font-mono text-emerald-400">${barber.commissionYear}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Comisión de Barbería */}
+                      <div className="text-slate-500 text-[11px] text-center italic">
+                        * Aportación a la barbería (60%): ${(barber.commissionYear * 1.5).toFixed(2)}
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB: VISTA CLIENTE (LANDING PAGE DE RESERVACIONES) */}
+          {/* ========================================================= */}
+          {currentTab === 'cliente-booking' && (
+            <div className="max-w-2xl mx-auto space-y-6">
+              
+              {/* Encabezado de la Landing Page del Cliente */}
+              <div className="text-center space-y-2">
+                <span className="text-5xl">💈</span>
+                <h2 className="text-3xl font-extrabold text-amber-500 tracking-wider">ELITE SHAVE BARBERÍA</h2>
+                <p className="text-xs text-slate-400">Reserva tu corte con los mejores estilistas de la ciudad desde la comodidad de tu casa.</p>
+              </div>
+
+              {clientStep === 1 && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-2xl">
+                  <h3 className="text-md font-bold text-slate-100 text-center pb-2 border-b border-slate-800">
+                    PROGRAMA TU VISITA
+                  </h3>
+
+                  <form onSubmit={handleClientBooking} className="space-y-4">
+                    
+                    {/* Paso A: Seleccionar Tipo de Agenda */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">
+                        ¿Cómo deseas agendar tu cita?
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => { setClientMode('barber'); setClientBarber(barbers[0]?.id || ''); }}
+                          className={`p-3 rounded-xl border text-center transition-all ${
+                            clientMode === 'barber' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-bold' : 'bg-slate-950 border-slate-850 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <span className="block text-lg mb-1">🧔</span>
+                          <span className="text-xs">Por Barbero Favorito</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => { setClientMode('general'); setClientBarber(''); }}
+                          className={`p-3 rounded-xl border text-center transition-all ${
+                            clientMode === 'general' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-bold' : 'bg-slate-950 border-slate-850 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <span className="block text-lg mb-1">📅</span>
+                          <span className="text-xs">Agenda General (Cualquier Barbero)</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Paso B: Seleccionar Barbero si aplica */}
+                    {clientMode === 'barber' && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Selecciona un Profesional</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {barbers.map(b => (
+                            <button
+                              type="button"
+                              key={b.id}
+                              onClick={() => setClientBarber(b.id)}
+                              className={`p-2.5 rounded-lg border text-center transition-all ${
+                                clientBarber === b.id ? 'bg-amber-500 border-amber-500 text-slate-950 font-bold' : 'bg-slate-950 border-slate-800 text-slate-300'
+                              }`}
+                            >
+                              <span className="text-xl block">{b.avatar}</span>
+                              <span className="text-[10px] block truncate">{b.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Paso C: Seleccionar Servicio */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Selecciona tu Servicio</label>
+                      <select
+                        value={clientService}
+                        onChange={(e) => setClientService(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                        required
+                      >
+                        <option value="">Escoge un corte o arreglo...</option>
+                        {services.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Paso D: Fecha y Hora */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Día Deseado</label>
+                        <input
+                          type="date"
+                          value={clientDate}
+                          onChange={(e) => setClientDate(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-300"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Hora Conveniente</label>
+                        <select
+                          value={clientTime}
+                          onChange={(e) => setClientTime(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-300"
+                          required
+                        >
+                          <option value="">Selecciona hora...</option>
+                          <option value="09:00">09:00 AM</option>
+                          <option value="10:00">10:00 AM</option>
+                          <option value="11:00">11:00 AM</option>
+                          <option value="12:00">12:00 PM</option>
+                          <option value="13:00">01:00 PM</option>
+                          <option value="14:00">02:00 PM</option>
+                          <option value="15:00">03:00 PM</option>
+                          <option value="16:00">04:00 PM</option>
+                          <option value="17:00">05:00 PM</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-lg text-xs tracking-wider transition-colors"
+                    >
+                      CONTINUAR CON LA RESERVACIÓN
+                    </button>
+
+                  </form>
+                </div>
+              )}
+
+              {clientStep === 2 && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
+                  <h3 className="text-md font-bold text-slate-100 text-center pb-2 border-b border-slate-800">
+                    COMPLETA TU INFORMACIÓN DE CONTACTO
+                  </h3>
+
+                  <form onSubmit={handleClientBooking} className="space-y-4">
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Nombre Completo *</label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Carlos Martínez"
+                        value={clientName}
+                        onChange={(e) => setClientName(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-300"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Número de Teléfono Celular *</label>
+                      <input
+                        type="tel"
+                        placeholder="Ej. 555-4422"
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-300"
+                        required
+                      />
+                    </div>
+
+                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 text-xs text-slate-300 space-y-2">
+                      <h4 className="font-bold text-amber-500">Resumen de Cita:</h4>
+                      <p>✂️ Servicio: <strong className="text-white">{services.find(s => s.id === clientService)?.name}</strong></p>
+                      <p>📅 Fecha y Hora: <strong className="text-white">{clientDate} a las {clientTime} hrs</strong></p>
+                      <p>💈 Barbero: <strong className="text-white">{clientMode === 'general' ? 'Asignado Automáticamente' : barbers.find(b => b.id === clientBarber)?.name}</strong></p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setClientStep(1)}
+                        className="bg-slate-850 hover:bg-slate-800 text-slate-400 py-2.5 rounded-lg text-xs"
+                      >
+                        Atrás
+                      </button>
+                      <button
+                        type="submit"
+                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-lg text-xs"
+                      >
+                        CONFIRMAR MI RESERVACIÓN
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {clientStep === 3 && (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4 shadow-2xl">
+                  <span className="text-6xl block">✅</span>
+                  <h3 className="text-xl font-bold text-emerald-400">¡RESERVACIÓN COMPLETADA CON ÉXITO!</h3>
+                  <p className="text-sm text-slate-300">
+                    Tu espacio ha sido agendado. El administrador de la barbería ya puede visualizarlo en el panel principal. Te esperamos con gusto.
+                  </p>
+                  
+                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 max-w-sm mx-auto text-xs text-left space-y-1">
+                    <p className="text-slate-500">Detalles de registro:</p>
+                    <p className="text-slate-300">Cliente: <strong className="text-slate-100">{clientName}</strong></p>
+                    <p className="text-slate-300">Servicio: <strong className="text-slate-100">{services.find(s => s.id === clientService)?.name}</strong></p>
+                    <p className="text-slate-300">Horario: <strong className="text-slate-100">{clientDate} • {clientTime} hrs</strong></p>
+                  </div>
+
+                  <button
+                    onClick={() => { setCurrentTab('dashboard'); resetClientBookingForm(); }}
+                    className="mt-4 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2 rounded-lg text-xs"
+                  >
+                    Regresar al Panel Principal
+                  </button>
+                </div>
+              )}
+
+            </div>
+          )}
+
+        </main>
+      </div>
+
+      {/* --- PIE DE PÁGINA --- */}
+      <footer className="bg-slate-900 border-t border-slate-800 py-3 text-center text-slate-500 text-[10px] tracking-wide mt-auto">
+        &copy; 2026 Elite Shave Barbería. Todos los derechos reservados. Desarrollado para Control Financiero y Proyecciones Estables de Negocio.
+      </footer>
+
+    </div>
+  );
+}
