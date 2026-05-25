@@ -28,8 +28,26 @@
   
   <!-- CDN de Babel Standalone para transpilar JSX en tiempo de ejecución -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    /* Estilos personalizados de scrollbar para mantener la estética premium */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #030712;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #f59e0b;
+    }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-amber-500 selection:text-slate-950">
 
   <!-- Contenedor raíz donde React renderizará la App -->
   <div id="root"></div>
@@ -108,16 +126,6 @@
       const [adminService, setAdminService] = useState('');
       const [adminDate, setAdminDate] = useState(new Date().toISOString().split('T')[0]);
       const [adminTime, setAdminTime] = useState('09:00');
-
-      // Reservas Clientes
-      const [clientStep, setClientStep] = useState(1);
-      const [clientMode, setClientMode] = useState('');
-      const [clientBarber, setClientBarber] = useState('');
-      const [clientService, setClientService] = useState('');
-      const [clientDate, setClientDate] = useState('');
-      const [clientTime, setClientTime] = useState('');
-      const [clientName, setClientName] = useState('');
-      const [clientPhone, setClientPhone] = useState('');
 
       const [projectionGrowth, setProjectionGrowth] = useState(10);
       const [notification, setNotification] = useState(null);
@@ -332,57 +340,6 @@
         showNotification('Cita cancelada.', 'info');
       };
 
-      const handleClientBooking = (e) => {
-        e.preventDefault();
-        if (clientStep === 1) {
-          if (!clientService || !clientDate || !clientTime) {
-            showNotification('Completa servicio, fecha y hora.', 'error');
-            return;
-          }
-          if (clientMode === 'barber' && !clientBarber) {
-            showNotification('Selecciona un barbero favorito.', 'error');
-            return;
-          }
-          setClientStep(2);
-        } else if (clientStep === 2) {
-          if (!clientName || !clientPhone) {
-            showNotification('Escribe tu nombre y celular.', 'error');
-            return;
-          }
-
-          let finalBarberId = clientBarber;
-          if (clientMode === 'general') {
-            const randomIndex = Math.floor(Math.random() * barbers.length);
-            finalBarberId = barbers[randomIndex]?.id || 'b1';
-          }
-
-          const newAppoint = {
-            id: 'a_' + Date.now(),
-            clientName,
-            phone: clientPhone,
-            barberId: finalBarberId,
-            serviceId: clientService,
-            date: clientDate,
-            time: clientTime,
-            status: 'pendiente'
-          };
-
-          setAppointments([...appointments, newAppoint]);
-          setClientStep(3);
-        }
-      };
-
-      const resetClientBookingForm = () => {
-        setClientStep(1);
-        setClientMode('');
-        setClientBarber('');
-        setClientService('');
-        setClientDate('');
-        setClientTime('');
-        setClientName('');
-        setClientPhone('');
-      };
-
       // --- CÁLCULOS MEMOIZADOS ---
       const lowStockAlerts = useMemo(() => products.filter(p => p.stock <= 2), [products]);
 
@@ -490,7 +447,7 @@
       }, [financialTotals, projectionGrowth]);
 
       return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-16 md:pb-0">
           
           {/* CABECERA */}
           <header className="bg-slate-900 border-b border-amber-500/20 px-4 py-3 flex justify-between items-center sticky top-0 z-40">
@@ -501,13 +458,6 @@
                 <p className="text-xs text-slate-400">Control Financiero & Reservas</p>
               </div>
             </div>
-
-            <button
-              onClick={() => { setCurrentTab('cliente-booking'); resetClientBookingForm(); }}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs flex items-center transition-colors"
-            >
-              <span className="mr-1">🌐</span> Vista de Clientes (Link)
-            </button>
           </header>
 
           {/* ALERTAS */}
@@ -520,12 +470,12 @@
             </div>
           )}
 
-          {lowStockAlerts.length > 0 && currentTab !== 'cliente-booking' && (
+          {lowStockAlerts.length > 0 && (
             <div className="bg-red-950 border-y border-red-500/30 px-4 py-2 flex items-center justify-between">
               <div className="flex items-center space-x-2 text-red-400 text-xs sm:text-sm">
                 <span>🚨</span>
                 <strong className="font-bold">¡Stock Crítico!</strong>
-                <span>Productos con 2 o menos unidades:</span>
+                <span>Mínimo 2 pz:</span>
                 <div className="flex flex-wrap gap-1.5 ml-2">
                   {lowStockAlerts.map(p => (
                     <span key={p.id} className="bg-red-900 text-red-100 px-2 py-0.5 rounded text-xs font-mono font-bold">
@@ -536,7 +486,7 @@
               </div>
               <button
                 onClick={() => setCurrentTab('inventario')}
-                className="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors"
+                className="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors whitespace-nowrap"
               >
                 Surtir
               </button>
@@ -546,76 +496,76 @@
           {/* CONTENIDO PRINCIPAL */}
           <div className="flex-1 flex flex-col md:flex-row">
             
-            {/* LATERAL MENU (ADMIN) */}
-            {currentTab !== 'cliente-booking' && (
-              <aside className="w-full md:w-64 bg-slate-900/50 border-r border-slate-800/80 p-4 space-y-2 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto">
-                <div className="hidden md:block text-xs font-semibold text-slate-500 tracking-wider uppercase mb-3">
-                  Administración
-                </div>
-                
-                <button
-                  onClick={() => setCurrentTab('dashboard')}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                    currentTab === 'dashboard' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                  }`}
-                >
-                  <span>📊</span>
-                  <span>Dashboard General</span>
-                </button>
+            {/* LATERAL MENU (DESKTOP ONLY) */}
+            <aside className="hidden md:flex w-64 bg-slate-900/50 border-r border-slate-800/80 p-4 space-y-2 flex-col shrink-0">
+              <div className="text-xs font-semibold text-slate-500 tracking-wider uppercase mb-3">
+                Administración
+              </div>
+              
+              <button
+                onClick={() => setCurrentTab('dashboard')}
+                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
+                  currentTab === 'dashboard' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                }`}
+              >
+                <span>📊</span>
+                <span>Dashboard General</span>
+              </button>
 
-                <button
-                  onClick={() => setCurrentTab('citas')}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                    currentTab === 'citas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                  }`}
-                >
-                  <span>📅</span>
-                  <span>Agenda & Citas</span>
-                </button>
+              <button
+                onClick={() => setCurrentTab('citas')}
+                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
+                  currentTab === 'citas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                }`}
+              >
+                <span>📅</span>
+                <span>Agenda & Citas</span>
+              </button>
 
-                <button
-                  onClick={() => setCurrentTab('finanzas')}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                    currentTab === 'finanzas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                  }`}
-                >
-                  <span>💵</span>
-                  <span>Ingresos y Gastos</span>
-                </button>
+              <button
+                onClick={() => setCurrentTab('finanzas')}
+                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
+                  currentTab === 'finanzas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                }`}
+              >
+                <span>💵</span>
+                <span>Ingresos y Gastos</span>
+              </button>
 
-                <button
-                  onClick={() => setCurrentTab('inventario')}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                    currentTab === 'inventario' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                  }`}
-                >
-                  <span>📦</span>
-                  <span>Precios & Utilidad</span>
-                </button>
+              <button
+                onClick={() => setCurrentTab('inventario')}
+                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
+                  currentTab === 'inventario' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                }`}
+              >
+                <span>📦</span>
+                <span>Precios & Utilidad</span>
+              </button>
 
-                <button
-                  onClick={() => setCurrentTab('barberos')}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all shrink-0 ${
-                    currentTab === 'barberos' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                  }`}
-                >
-                  <span>💈</span>
-                  <span>Comisiones Barberos</span>
-                </button>
-              </aside>
-            )}
+              <button
+                onClick={() => setCurrentTab('barberos')}
+                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
+                  currentTab === 'barberos' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
+                }`}
+              >
+                <span>💈</span>
+                <span>Comisiones Barberos</span>
+              </button>
+            </aside>
 
             {/* SECCIÓN VISTA ACTIVA */}
-            <main className="flex-1 p-4 md:p-6 overflow-y-auto max-w-7xl mx-auto w-full">
+            <main className="flex-1 p-4 md:p-6 overflow-y-auto max-w-7xl mx-auto w-full pb-24 md:pb-6">
               
               {/* TAB: DASHBOARD */}
               {currentTab === 'dashboard' && (
                 <div className="space-y-6">
+                  
+                  {/* Tarjetas Resumen */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
                       <div className="flex justify-between items-center text-slate-400 text-xs">
                         <span>INGRESOS BRUTOS</span>
-                        <span className="bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded text-xs">Ventas</span>
+                        <span className="bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded text-xs font-bold">Ventas</span>
                       </div>
                       <div className="mt-2">
                         <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalRevenue.toLocaleString()}</span>
@@ -626,7 +576,7 @@
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
                       <div className="flex justify-between items-center text-slate-400 text-xs">
                         <span>COSTOS & COMISIONES</span>
-                        <span className="bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded text-xs">Egresos</span>
+                        <span className="bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded text-xs font-bold">Egresos</span>
                       </div>
                       <div className="mt-2">
                         <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalCost.toLocaleString()}</span>
@@ -650,7 +600,7 @@
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
                       <div className="flex justify-between items-center text-slate-400 text-xs">
                         <span>COMISIONES DE BARBEROS</span>
-                        <span className="bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded text-xs">40% Pago</span>
+                        <span className="bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded text-xs font-bold">40% Pago</span>
                       </div>
                       <div className="mt-2">
                         <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalBarberCommissions.toLocaleString()}</span>
@@ -659,11 +609,12 @@
                     </div>
                   </div>
 
+                  {/* Demandas */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Demanda de Servicios</h3>
+                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase font-bold">Demanda de Servicios</h3>
                       {itemDemands.services.length === 0 ? (
-                        <p className="text-xs text-slate-500">Sin transacciones.</p>
+                        <p className="text-xs text-slate-500">Sin transacciones registradas.</p>
                       ) : (
                         <div className="space-y-4">
                           {itemDemands.services.map((item, idx) => {
@@ -685,7 +636,7 @@
                     </div>
 
                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase">Demanda de Productos</h3>
+                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase font-bold">Demanda de Productos</h3>
                       {itemDemands.products.length === 0 ? (
                         <p className="text-xs text-slate-500">Sin ventas registradas.</p>
                       ) : (
@@ -716,12 +667,12 @@
                         <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Proyección Financiera</h3>
                         <p className="text-xs text-slate-400">Estima tus ingresos futuros basados en el crecimiento</p>
                       </div>
-                      <div className="mt-2 sm:mt-0 flex items-center space-x-2">
-                        <label className="text-xs text-slate-400 font-bold">Crecimiento:</label>
+                      <div className="mt-3 sm:mt-0 flex items-center space-x-2">
+                        <label className="text-xs text-slate-400 font-bold whitespace-nowrap">Crecimiento:</label>
                         <select
                           value={projectionGrowth}
                           onChange={(e) => setProjectionGrowth(parseInt(e.target.value))}
-                          className="bg-slate-950 border border-slate-800 text-xs rounded px-2 py-1 text-amber-500 font-bold focus:outline-none"
+                          className="bg-slate-950 border border-slate-800 text-xs rounded px-2.5 py-1.5 text-amber-500 font-bold focus:outline-none"
                         >
                           <option value="5">5%</option>
                           <option value="10">10%</option>
@@ -765,7 +716,7 @@
                         <p className="text-xs text-slate-400">Registrar cita directa administrada</p>
                       </div>
                       
-                      <form onSubmit={handleAdminAddAppointment} className="space-y-3">
+                      <form onSubmit={handleAdminAddAppointment} className="space-y-3.5">
                         <div>
                           <label className="block text-xs text-slate-400 mb-1">Nombre del Cliente *</label>
                           <input
@@ -773,7 +724,7 @@
                             placeholder="Ej. Juan Pérez"
                             value={adminClientName}
                             onChange={(e) => setAdminClientName(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
                             required
                           />
                         </div>
@@ -785,7 +736,7 @@
                             placeholder="Ej. 555-0101"
                             value={adminPhone}
                             onChange={(e) => setAdminPhone(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
                             required
                           />
                         </div>
@@ -795,7 +746,7 @@
                           <select
                             value={adminService}
                             onChange={(e) => setAdminService(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
                             required
                           >
                             <option value="">Selecciona un Servicio</option>
@@ -810,7 +761,7 @@
                           <select
                             value={adminBarber}
                             onChange={(e) => setAdminBarber(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
                             required
                           >
                             <option value="">Selecciona un Barbero</option>
@@ -827,7 +778,7 @@
                               type="date"
                               value={adminDate}
                               onChange={(e) => setAdminDate(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 focus:outline-none"
                               required
                             />
                           </div>
@@ -837,7 +788,7 @@
                               type="time"
                               value={adminTime}
                               onChange={(e) => setAdminTime(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 focus:outline-none"
                               required
                             />
                           </div>
@@ -845,7 +796,7 @@
 
                         <button
                           type="submit"
-                          className="w-full mt-2 bg-amber-500 text-slate-950 font-bold py-2 rounded text-xs hover:bg-amber-600 transition-colors"
+                          className="w-full mt-2 bg-amber-500 text-slate-950 font-bold py-2.5 rounded-lg text-xs hover:bg-amber-600 transition-colors"
                         >
                           Agendar en Sistema
                         </button>
@@ -855,8 +806,8 @@
                     <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
                       <div className="flex justify-between items-center mb-4">
                         <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Agenda de Citas Activas</h3>
-                        <span className="text-xs bg-slate-850 px-2 py-1 rounded text-slate-400">
-                          Total: {appointments.filter(a => a.status === 'pendiente').length} pendientes
+                        <span className="text-xs bg-slate-850 px-2.5 py-1 rounded-md text-slate-400">
+                          Total: {appointments.filter(a => a.status === 'pendiente').length}
                         </span>
                       </div>
 
@@ -896,13 +847,13 @@
                                   <div className="flex space-x-2 w-full sm:w-auto">
                                     <button
                                       onClick={() => handleCompleteAppointment(app.id)}
-                                      className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-2.5 py-1.5 rounded text-xs transition-colors"
+                                      className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
                                     >
                                       ✓ Completar
                                     </button>
                                     <button
                                       onClick={() => handleCancelAppointment(app.id)}
-                                      className="bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-300 px-2.5 py-1.5 rounded text-xs transition-colors"
+                                      className="bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-300 px-3 py-2 rounded-lg text-xs transition-colors"
                                     >
                                       Cancelar
                                     </button>
@@ -948,7 +899,7 @@
                           <select
                             value={txCategory}
                             onChange={(e) => handleTxCategoryChange(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
                           >
                             {txType === 'ingreso' ? (
                               <>
@@ -971,7 +922,7 @@
                             <select
                               value={selectedItemId}
                               onChange={(e) => handleItemSelectChange(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
                               required
                             >
                               <option value="">Selecciona una opción</option>
@@ -989,7 +940,7 @@
                               placeholder="Ej. Pago de Renta"
                               value={txItemName}
                               onChange={(e) => setTxItemName(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
                               required
                             />
                           </div>
@@ -1001,7 +952,7 @@
                             <select
                               value={txBarberId}
                               onChange={(e) => setTxBarberId(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
                               required
                             >
                               <option value="">Selecciona un barbero</option>
@@ -1018,7 +969,7 @@
                             type="number"
                             value={txAmount}
                             onChange={(e) => setTxAmount(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none"
                             required
                             disabled={txCategory === 'servicio' || txCategory === 'producto'}
                           />
@@ -1030,14 +981,14 @@
                             type="date"
                             value={txDate}
                             onChange={(e) => setTxDate(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-300 focus:outline-none"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
                             required
                           />
                         </div>
 
                         <button
                           type="submit"
-                          className={`w-full font-bold py-2 rounded text-xs transition-colors ${
+                          className={`w-full font-bold py-2.5 rounded-lg text-xs transition-colors ${
                             txType === 'ingreso' ? 'bg-amber-500 hover:bg-amber-600 text-slate-950' : 'bg-red-600 hover:bg-red-700 text-white'
                           }`}
                         >
@@ -1048,11 +999,11 @@
 
                     <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
                       <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase font-bold">Historial de Flujo de Caja</h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs border-collapse">
+                      <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <table className="w-full text-left text-xs border-collapse min-w-[600px]">
                           <thead>
-                            <tr className="border-b border-slate-800 text-slate-400">
-                              <th className="py-2">Fecha</th>
+                            <tr className="border-b border-slate-800 text-slate-400 font-bold">
+                              <th className="py-2.5">Fecha</th>
                               <th>Concepto</th>
                               <th>Categoría</th>
                               <th>Barbero</th>
@@ -1064,17 +1015,17 @@
                               const b = barbers.find(barb => barb.id === tx.barberId);
                               return (
                                 <tr key={tx.id} className="hover:bg-slate-950/25">
-                                  <td className="py-2 font-mono text-slate-400">{tx.date}</td>
+                                  <td className="py-3 font-mono text-slate-400 whitespace-nowrap">{tx.date}</td>
                                   <td className="font-semibold text-slate-200">{tx.itemName}</td>
-                                  <td>
+                                  <td className="whitespace-nowrap">
                                     <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
                                       tx.type === 'ingreso' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
                                     }`}>
                                       {tx.category}
                                     </span>
                                   </td>
-                                  <td className="text-slate-400">{b ? `${b.avatar} ${b.name}` : '-'}</td>
-                                  <td className={`text-right font-mono font-bold ${tx.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                  <td className="text-slate-400 whitespace-nowrap">{b ? `${b.avatar} ${b.name}` : '-'}</td>
+                                  <td className={`text-right font-mono font-bold whitespace-nowrap ${tx.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'}`}>
                                     {tx.type === 'ingreso' ? '+' : '-'}${tx.amount}
                                   </td>
                                 </tr>
@@ -1095,7 +1046,7 @@
                     <div className="bg-amber-500/10 border border-amber-500/30 p-5 rounded-xl space-y-4">
                       <div className="flex justify-between items-center">
                         <h3 className="text-sm font-bold text-amber-500 uppercase">Ajustar Precios de {editingItemType}</h3>
-                        <button onClick={() => setEditingItemId('')} className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded">Cancelar</button>
+                        <button onClick={() => setEditingItemId('')} className="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md">Cancelar</button>
                       </div>
 
                       <form onSubmit={handleSaveItemEdit} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -1105,7 +1056,7 @@
                             type="number"
                             value={editPrice}
                             onChange={(e) => setEditPrice(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-amber-500 font-bold"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-amber-500 font-bold focus:outline-none"
                             required
                           />
                         </div>
@@ -1115,7 +1066,7 @@
                             type="number"
                             value={editCost}
                             onChange={(e) => setEditCost(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-red-400 font-bold"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-red-400 font-bold focus:outline-none"
                             required
                           />
                         </div>
@@ -1126,13 +1077,13 @@
                               type="number"
                               value={newStock}
                               onChange={(e) => setNewStock(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-indigo-400 font-bold"
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-indigo-400 font-bold focus:outline-none"
                               required
                             />
                           </div>
                         )}
                         <div className="flex items-end">
-                          <button type="submit" className="w-full bg-amber-500 text-slate-950 font-bold py-2 rounded text-xs">Guardar Tarifa</button>
+                          <button type="submit" className="w-full bg-amber-500 text-slate-950 font-bold py-2.5 rounded-lg text-xs hover:bg-amber-600 transition-colors">Guardar Tarifa</button>
                         </div>
                       </form>
                     </div>
@@ -1140,16 +1091,16 @@
 
                   <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
                     <h3 className="text-sm font-bold text-amber-500 mb-4 uppercase">Costo y Margen de Utilidad (Servicios)</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                    <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0">
+                      <table className="w-full text-left text-xs border-collapse min-w-[600px]">
                         <thead>
-                          <tr className="border-b border-slate-800 text-slate-400">
-                            <th className="py-2">Servicio</th>
+                          <tr className="border-b border-slate-800 text-slate-400 font-bold">
+                            <th className="py-2.5">Servicio</th>
                             <th>P. Público</th>
                             <th>Insumos</th>
                             <th>Pago Barbero (40%)</th>
                             <th>Utilidad Neta (60% - Costos)</th>
-                            <th>Ajustes</th>
+                            <th className="text-right">Ajustes</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/60">
@@ -1159,12 +1110,12 @@
                             return (
                               <tr key={s.id} className="hover:bg-slate-950/15">
                                 <td className="py-3 font-semibold text-slate-200">{s.name}</td>
-                                <td className="font-mono text-slate-300">${s.price}</td>
-                                <td className="font-mono text-red-400">${s.cost}</td>
-                                <td className="font-mono text-indigo-400">${barberComm.toFixed(2)}</td>
-                                <td className="font-mono text-emerald-400 font-bold">${netUtility.toFixed(2)}</td>
-                                <td>
-                                  <button onClick={() => startEditing('servicio', s)} className="text-[11px] text-amber-500 hover:underline">Configurar</button>
+                                <td className="font-mono text-slate-300 whitespace-nowrap">${s.price}</td>
+                                <td className="font-mono text-red-400 whitespace-nowrap">${s.cost}</td>
+                                <td className="font-mono text-indigo-400 whitespace-nowrap">${barberComm.toFixed(2)}</td>
+                                <td className="font-mono text-emerald-400 font-bold whitespace-nowrap">${netUtility.toFixed(2)}</td>
+                                <td className="text-right whitespace-nowrap">
+                                  <button onClick={() => startEditing('servicio', s)} className="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-500 px-2.5 py-1 rounded-md transition-colors font-semibold">Configurar</button>
                                 </td>
                               </tr>
                             );
@@ -1176,17 +1127,17 @@
 
                   <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
                     <h3 className="text-sm font-bold text-amber-500 mb-4 uppercase">Inventario y Utilidades (Productos)</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs border-collapse">
+                    <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0">
+                      <table className="w-full text-left text-xs border-collapse min-w-[700px]">
                         <thead>
-                          <tr className="border-b border-slate-800 text-slate-400">
-                            <th className="py-2">Producto</th>
+                          <tr className="border-b border-slate-800 text-slate-400 font-bold">
+                            <th className="py-2.5">Producto</th>
                             <th>Stock</th>
                             <th>P. Público</th>
                             <th>Costo Adquisición</th>
                             <th>Utilidad Bruta</th>
                             <th>Estatus</th>
-                            <th>Ajustes</th>
+                            <th className="text-right">Ajustes</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/60">
@@ -1195,19 +1146,19 @@
                             return (
                               <tr key={p.id} className="hover:bg-slate-950/15">
                                 <td className="py-3 font-semibold text-slate-200">{p.name}</td>
-                                <td className="font-mono text-slate-200 font-bold">{p.stock} pz</td>
-                                <td className="font-mono text-slate-300">${p.price}</td>
-                                <td className="font-mono text-red-400">${p.cost}</td>
-                                <td className="font-mono text-emerald-400 font-bold">${utility}</td>
-                                <td>
+                                <td className="font-mono text-slate-200 font-bold whitespace-nowrap">{p.stock} pz</td>
+                                <td className="font-mono text-slate-300 whitespace-nowrap">${p.price}</td>
+                                <td className="font-mono text-red-400 whitespace-nowrap">${p.cost}</td>
+                                <td className="font-mono text-emerald-400 font-bold whitespace-nowrap">${utility}</td>
+                                <td className="whitespace-nowrap">
                                   {p.stock <= 2 ? (
                                     <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-bold">STOCK BAJO</span>
                                   ) : (
                                     <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">ESTABLE</span>
                                   )}
                                 </td>
-                                <td>
-                                  <button onClick={() => startEditing('producto', p)} className="text-[11px] text-amber-500 hover:underline">Configurar</button>
+                                <td className="text-right whitespace-nowrap">
+                                  <button onClick={() => startEditing('producto', p)} className="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-500 px-2.5 py-1 rounded-md transition-colors font-semibold">Configurar</button>
                                 </td>
                               </tr>
                             );
@@ -1228,7 +1179,7 @@
                       <p className="text-xs text-slate-400">Corte/Servicio: 40% de comisión para el Barbero y 60% retenido por la Barbería.</p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {barberMetrics.map(barber => (
                         <div key={barber.id} className="bg-slate-950 border border-slate-850 rounded-xl p-5 space-y-4">
                           <div className="flex items-center space-x-3">
@@ -1248,20 +1199,20 @@
                             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Historial Comisiones (40%):</span>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div className="bg-slate-900/30 p-2 rounded">
-                                <span className="block text-[10px] text-slate-400">Hoy</span>
-                                <span className="font-bold text-emerald-400 font-mono">${barber.commissionToday}</span>
+                                <span className="block text-[10px] text-slate-400 font-semibold">Hoy</span>
+                                <span className="font-bold text-emerald-400 font-mono text-sm">${barber.commissionToday}</span>
                               </div>
                               <div className="bg-slate-900/30 p-2 rounded">
-                                <span className="block text-[10px] text-slate-400">Semana</span>
-                                <span className="font-bold text-emerald-400 font-mono">${barber.commissionWeek}</span>
+                                <span className="block text-[10px] text-slate-400 font-semibold">Semana</span>
+                                <span className="font-bold text-emerald-400 font-mono text-sm">${barber.commissionWeek}</span>
                               </div>
                               <div className="bg-slate-900/30 p-2 rounded">
-                                <span className="block text-[10px] text-slate-400">Mes</span>
-                                <span className="font-bold text-emerald-400 font-mono">${barber.commissionMonth}</span>
+                                <span className="block text-[10px] text-slate-400 font-semibold">Mes</span>
+                                <span className="font-bold text-emerald-400 font-mono text-sm">${barber.commissionMonth}</span>
                               </div>
                               <div className="bg-slate-900/30 p-2 rounded">
-                                <span className="block text-[10px] text-slate-400">Año</span>
-                                <span className="font-bold text-emerald-400 font-mono">${barber.commissionYear}</span>
+                                <span className="block text-[10px] text-slate-400 font-semibold">Año</span>
+                                <span className="font-bold text-emerald-400 font-mono text-sm">${barber.commissionYear}</span>
                               </div>
                             </div>
                           </div>
@@ -1272,178 +1223,59 @@
                 </div>
               )}
 
-              {/* TAB: RESERVAS CLIENTES */}
-              {currentTab === 'cliente-booking' && (
-                <div className="max-w-2xl mx-auto space-y-6">
-                  <div className="text-center space-y-2">
-                    <span className="text-5xl">💈</span>
-                    <h2 className="text-3xl font-extrabold text-amber-500 tracking-wider">ELITE SHAVE BARBERÍA</h2>
-                    <p className="text-xs text-slate-400">Agenda tu cita de manera automatizada</p>
-                  </div>
-
-                  {clientStep === 1 && (
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-2xl">
-                      <h3 className="text-md font-bold text-slate-100 text-center pb-2 border-b border-slate-800">PROGRAMA TU CITA</h3>
-                      
-                      <form onSubmit={handleClientBooking} className="space-y-4">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-400 uppercase mb-2">¿Cómo deseas agendar?</label>
-                          <div className="grid grid-cols-2 gap-3">
-                            <button
-                              type="button"
-                              onClick={() => { setClientMode('barber'); setClientBarber(barbers[0]?.id || ''); }}
-                              className={`p-3 rounded-xl border text-center transition-all ${
-                                clientMode === 'barber' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-bold' : 'bg-slate-950 border-slate-850 text-slate-400'
-                              }`}
-                            >
-                              <span className="block text-lg">🧔</span>
-                              <span className="text-xs">Por Barbero Favorito</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setClientMode('general'); setClientBarber(''); }}
-                              className={`p-3 rounded-xl border text-center transition-all ${
-                                clientMode === 'general' ? 'bg-amber-500/10 border-amber-500 text-amber-500 font-bold' : 'bg-slate-950 border-slate-850 text-slate-400'
-                              }`}
-                            >
-                              <span className="block text-lg">📅</span>
-                              <span className="text-xs">Agenda General</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {clientMode === 'barber' && (
-                          <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Selecciona Profesional</label>
-                            <div className="grid grid-cols-3 gap-2">
-                              {barbers.map(b => (
-                                <button
-                                  type="button"
-                                  key={b.id}
-                                  onClick={() => setClientBarber(b.id)}
-                                  className={`p-2 rounded-lg border text-center transition-all ${
-                                    clientBarber === b.id ? 'bg-amber-500 border-amber-500 text-slate-950 font-bold' : 'bg-slate-950 border-slate-800 text-slate-300'
-                                  }`}
-                                >
-                                  <span className="block">{b.avatar}</span>
-                                  <span className="text-[10px] block truncate">{b.name}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-400 mb-2 uppercase">Selecciona Servicio</label>
-                          <select
-                            value={clientService}
-                            onChange={(e) => setClientService(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-                            required
-                          >
-                            <option value="">Escoge un servicio...</option>
-                            {services.map(s => (
-                              <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Día Deseado</label>
-                            <input
-                              type="date"
-                              value={clientDate}
-                              onChange={(e) => setClientDate(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Hora Conveniente</label>
-                            <select
-                              value={clientTime}
-                              onChange={(e) => setClientTime(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
-                              required
-                            >
-                              <option value="">Selecciona hora...</option>
-                              <option value="09:00">09:00 AM</option>
-                              <option value="10:00">10:00 AM</option>
-                              <option value="11:00">11:00 AM</option>
-                              <option value="12:00">12:00 PM</option>
-                              <option value="13:00">01:00 PM</option>
-                              <option value="14:00">02:00 PM</option>
-                              <option value="15:00">03:00 PM</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <button type="submit" className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-lg text-xs tracking-wider transition-colors">
-                          SIGUIENTE PASO
-                        </button>
-                      </form>
-                    </div>
-                  )}
-
-                  {clientStep === 2 && (
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-2xl">
-                      <h3 className="text-md font-bold text-slate-100 text-center pb-2 border-b border-slate-800">COMPLETA TUS DATOS</h3>
-                      
-                      <form onSubmit={handleClientBooking} className="space-y-4">
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Nombre Completo *</label>
-                          <input
-                            type="text"
-                            placeholder="Ej. Carlos Martínez"
-                            value={clientName}
-                            onChange={(e) => setClientName(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Teléfono Celular *</label>
-                          <input
-                            type="tel"
-                            placeholder="Ej. 555-4422"
-                            value={clientPhone}
-                            onChange={(e) => setClientPhone(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
-                            required
-                          />
-                        </div>
-
-                        <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 text-xs text-slate-300 space-y-1">
-                          <h4 className="font-bold text-amber-500">Resumen:</h4>
-                          <p>✂️ Servicio: <strong className="text-white">{services.find(s => s.id === clientService)?.name}</strong></p>
-                          <p>📅 Horario: <strong className="text-white">{clientDate} a las {clientTime} hrs</strong></p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <button type="button" onClick={() => setClientStep(1)} className="bg-slate-850 hover:bg-slate-800 text-slate-400 py-2.5 rounded-lg text-xs">Atrás</button>
-                          <button type="submit" className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-lg text-xs">CONFIRMAR CITA</button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-
-                  {clientStep === 3 && (
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4 shadow-2xl">
-                      <span className="text-6xl block">✅</span>
-                      <h3 className="text-xl font-bold text-emerald-400">¡AGENDADO CON ÉXITO!</h3>
-                      <p className="text-sm text-slate-300">Te esperamos en la sucursal de Elite Shave.</p>
-                      <button onClick={() => { setCurrentTab('dashboard'); resetClientBookingForm(); }} className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2 rounded-lg text-xs">Regresar al Panel</button>
-                    </div>
-                  )}
-                </div>
-              )}
-
             </main>
           </div>
 
-          <footer className="bg-slate-900 border-t border-slate-800 py-3 text-center text-slate-500 text-[10px] mt-auto">
+          {/* MENÚ DE NAVEGACIÓN MÓVIL FIJO (BOTTOM TAB NAV) */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex justify-around py-2 z-40 shadow-xl">
+            <button
+              onClick={() => setCurrentTab('dashboard')}
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+                currentTab === 'dashboard' ? 'text-amber-500 scale-105' : 'text-slate-400'
+              }`}
+            >
+              <span className="text-lg">📊</span>
+              <span className="text-[10px] font-bold mt-0.5">Dashboard</span>
+            </button>
+            <button
+              onClick={() => setCurrentTab('citas')}
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+                currentTab === 'citas' ? 'text-amber-500 scale-105' : 'text-slate-400'
+              }`}
+            >
+              <span className="text-lg">📅</span>
+              <span className="text-[10px] font-bold mt-0.5">Agenda</span>
+            </button>
+            <button
+              onClick={() => setCurrentTab('finanzas')}
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+                currentTab === 'finanzas' ? 'text-amber-500 scale-105' : 'text-slate-400'
+              }`}
+            >
+              <span className="text-lg">💵</span>
+              <span className="text-[10px] font-bold mt-0.5">Caja</span>
+            </button>
+            <button
+              onClick={() => setCurrentTab('inventario')}
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+                currentTab === 'inventario' ? 'text-amber-500 scale-105' : 'text-slate-400'
+              }`}
+            >
+              <span className="text-lg">📦</span>
+              <span className="text-[10px] font-bold mt-0.5">Inventario</span>
+            </button>
+            <button
+              onClick={() => setCurrentTab('barberos')}
+              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
+                currentTab === 'barberos' ? 'text-amber-500 scale-105' : 'text-slate-400'
+              }`}
+            >
+              <span className="text-lg">💈</span>
+              <span className="text-[10px] font-bold mt-0.5">Barberos</span>
+            </button>
+          </nav>
+
+          <footer className="hidden md:block bg-slate-900 border-t border-slate-800 py-3 text-center text-slate-500 text-[10px] mt-auto">
             &copy; 2026 Elite Shave Barbería. Control Financiero Inteligente.
           </footer>
         </div>
