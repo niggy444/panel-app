@@ -1,1290 +1,1385 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="scroll-smooth">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elite Shave - Control Financiero & Reservas</title>
-  
-  <!-- Tailwind CSS CDN para Estilizado Premium -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            slate: {
-              850: '#1b2330',
-              950: '#030712',
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Adrián Méndez | Odontología Estética y Funcional Premium</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Playfair Display -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        salvia: {
+                            50: '#f4f7f5',
+                            100: '#e3eae4',
+                            200: '#cbdad0',
+                            500: '#7fa48f',
+                            600: '#648773',
+                            700: '#526e5e',
+                            800: '#43584c',
+                        },
+                        pizarra: {
+                            50: '#f8fafc',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    }
+                }
             }
-          }
         }
-      }
-    }
-  </script>
-
-  <!-- CDNs Oficiales de React 18 y ReactDOM -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  
-  <!-- CDN de Babel Standalone para transpilar JSX en tiempo de ejecución -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <style>
-    /* Estilos personalizados de scrollbar para mantener la estética premium */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #030712;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #1e293b;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #f59e0b;
-    }
-  </style>
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .step-transition {
+            transition: all 0.3s ease-in-out;
+        }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-amber-500 selection:text-slate-950">
+<body class="bg-pizarra-50 text-slate-800 font-sans antialiased selection:bg-salvia-200 selection:text-salvia-800">
 
-  <!-- Contenedor raíz donde React renderizará la App -->
-  <div id="root"></div>
+    <!-- Navigation Bar -->
+    <header class="sticky top-0 z-40 w-full backdrop-blur-md bg-white/80 border-b border-slate-100 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <!-- Logo -->
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-salvia-600 to-salvia-500 flex items-center justify-center text-white shadow-lg shadow-salvia-200">
+                        <i class="fa-solid fa-tooth text-lg"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-serif text-xl font-bold tracking-tight text-slate-900 leading-tight">Dr. Adrián Méndez</span>
+                        <span class="text-[10px] text-salvia-600 font-semibold tracking-wider uppercase">Odontología Estética</span>
+                    </div>
+                </div>
+                
+                <!-- Desktop Nav -->
+                <nav class="hidden md:flex items-center gap-8">
+                    <a href="#servicios" class="text-sm font-medium text-slate-600 hover:text-salvia-600 transition-colors">Tratamientos</a>
+                    <a href="#doctor" class="text-sm font-medium text-slate-600 hover:text-salvia-600 transition-colors">Sobre Mí</a>
+                    <a href="#testimonios" class="text-sm font-medium text-slate-600 hover:text-salvia-600 transition-colors">Testimonios</a>
+                    <a href="#faq" class="text-sm font-medium text-slate-600 hover:text-salvia-600 transition-colors">Preguntas Frecuentes</a>
+                </nav>
 
-  <!-- Script con sintaxis JSX transpilado por Babel -->
-  <script type="text/babel">
-    const { useState, useMemo } = React;
-
-    // --- MOCK DATA INICIAL ---
-    const INITIAL_SERVICES = [
-      { id: 's1', name: 'Corte de Cabello Clásico', price: 250, cost: 50 },
-      { id: 's2', name: 'Arreglo de Barba Premium', price: 180, cost: 30 },
-      { id: 's3', name: 'Corte + Barba (Combo)', price: 380, cost: 70 },
-      { id: 's4', name: 'Coloración / Tintura', price: 500, cost: 120 },
-    ];
-
-    const INITIAL_PRODUCTS = [
-      { id: 'p1', name: 'Cera Moldeadora Mate', price: 220, cost: 100, stock: 6 },
-      { id: 'p2', name: 'Aceite de Barba de Eucalipto', price: 190, cost: 80, stock: 2 }, // Alerta de stock bajo <= 2
-      { id: 'p3', name: 'Champú Anticaspa Profesional', price: 280, cost: 120, stock: 1 }, // Alerta de stock bajo <= 2
-      { id: 'p4', name: 'Aftershave Bálsamo Suave', price: 150, cost: 60, stock: 12 },
-    ];
-
-    const INITIAL_BARBERS = [
-      { id: 'b1', name: 'Carlos Gómez', avatar: '✂️', active: true },
-      { id: 'b2', name: 'Mateo Rodríguez', avatar: '💈', active: true },
-      { id: 'b3', name: 'Santiago "Razor" Silva', avatar: '🧔', active: true },
-    ];
-
-    const INITIAL_TRANSACTIONS = [
-      { id: 't1', type: 'ingreso', category: 'servicio', itemId: 's1', itemName: 'Corte de Cabello Clásico', amount: 250, date: '2026-05-10', barberId: 'b1' },
-      { id: 't2', type: 'ingreso', category: 'servicio', itemId: 's3', itemName: 'Corte + Barba (Combo)', amount: 380, date: '2026-05-12', barberId: 'b2' },
-      { id: 't3', type: 'ingreso', category: 'producto', itemId: 'p1', itemName: 'Cera Moldeadora Mate', amount: 220, date: '2026-05-14', barberId: null },
-      { id: 't4', type: 'gasto', category: 'operativo', itemName: 'Renta del Local', amount: 3000, date: '2026-05-01', barberId: null },
-      { id: 't5', type: 'gasto', category: 'operativo', itemName: 'Insumos de Barbería (Toallas, etc)', amount: 450, date: '2026-05-05', barberId: null },
-      { id: 't6', type: 'ingreso', category: 'servicio', itemId: 's4', itemName: 'Coloración / Tintura', amount: 500, date: '2026-05-20', barberId: 'b3' },
-      { id: 't7', type: 'ingreso', category: 'producto', itemId: 'p4', itemName: 'Aftershave Bálsamo Suave', amount: 150, date: '2026-05-22', barberId: null },
-      { id: 't8', type: 'ingreso', category: 'servicio', itemId: 's2', itemName: 'Arreglo de Barba Premium', amount: 180, date: '2026-05-24', barberId: 'b1' },
-    ];
-
-    const INITIAL_APPOINTMENTS = [
-      { id: 'a1', clientName: 'Juan Pérez', phone: '555-0192', barberId: 'b1', serviceId: 's1', date: '2026-05-26', time: '10:00', status: 'pendiente' },
-      { id: 'a2', clientName: 'Andrés López', phone: '555-0343', barberId: 'b2', serviceId: 's3', date: '2026-05-26', time: '11:30', status: 'pendiente' },
-      { id: 'a3', clientName: 'Diego Torres', phone: '555-0988', barberId: 'b3', serviceId: 's2', date: '2026-05-27', time: '14:00', status: 'pendiente' },
-    ];
-
-    function App() {
-      // --- ESTADOS DE LA APLICACIÓN ---
-      const [currentTab, setCurrentTab] = useState('dashboard');
-      const [services, setServices] = useState(INITIAL_SERVICES);
-      const [products, setProducts] = useState(INITIAL_PRODUCTS);
-      const [barbers, setBarbers] = useState(INITIAL_BARBERS);
-      const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
-      const [appointments, setAppointments] = useState(INITIAL_APPOINTMENTS);
-
-      // --- ESTADOS DE FORMULARIOS ---
-      const [txType, setTxType] = useState('ingreso');
-      const [txCategory, setTxCategory] = useState('servicio');
-      const [selectedItemId, setSelectedItemId] = useState('');
-      const [txAmount, setTxAmount] = useState('');
-      const [txItemName, setTxItemName] = useState('');
-      const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
-      const [txBarberId, setTxBarberId] = useState('');
-
-      // Edición Costo / Inventario
-      const [editingItemType, setEditingItemType] = useState('servicio');
-      const [editingItemId, setEditingItemId] = useState('');
-      const [editPrice, setEditPrice] = useState('');
-      const [editCost, setEditCost] = useState('');
-      const [newStock, setNewStock] = useState('');
-
-      // Agenda Admin
-      const [adminClientName, setAdminClientName] = useState('');
-      const [adminPhone, setAdminPhone] = useState('');
-      const [adminBarber, setAdminBarber] = useState('');
-      const [adminService, setAdminService] = useState('');
-      const [adminDate, setAdminDate] = useState(new Date().toISOString().split('T')[0]);
-      const [adminTime, setAdminTime] = useState('09:00');
-
-      const [projectionGrowth, setProjectionGrowth] = useState(10);
-      const [notification, setNotification] = useState(null);
-
-      const showNotification = (message, type = 'success') => {
-        setNotification({ message, type });
-        setTimeout(() => {
-          setNotification(null);
-        }, 5000);
-      };
-
-      // --- ACCIONES ---
-      const handleTxCategoryChange = (cat) => {
-        setTxCategory(cat);
-        if (cat === 'servicio') {
-          const firstSrv = services[0];
-          if (firstSrv) {
-            setSelectedItemId(firstSrv.id);
-            setTxAmount(firstSrv.price);
-            setTxItemName(firstSrv.name);
-          }
-        } else if (cat === 'producto') {
-          const firstProd = products[0];
-          if (firstProd) {
-            setSelectedItemId(firstProd.id);
-            setTxAmount(firstProd.price);
-            setTxItemName(firstProd.name);
-          }
-        } else {
-          setSelectedItemId('');
-          setTxAmount('');
-          setTxItemName('');
-        }
-      };
-
-      const handleItemSelectChange = (id) => {
-        setSelectedItemId(id);
-        if (txCategory === 'servicio') {
-          const srv = services.find(s => s.id === id);
-          if (srv) {
-            setTxAmount(srv.price);
-            setTxItemName(srv.name);
-          }
-        } else if (txCategory === 'producto') {
-          const prod = products.find(p => p.id === id);
-          if (prod) {
-            setTxAmount(prod.price);
-            setTxItemName(prod.name);
-          }
-        }
-      };
-
-      const handleAddTransaction = (e) => {
-        e.preventDefault();
-        let finalAmount = parseFloat(txAmount);
-        let finalItemName = txItemName;
-
-        if (txType === 'gasto' && txCategory === 'operativo') {
-          if (!finalItemName || isNaN(finalAmount)) {
-            showNotification('Completa todos los campos del gasto.', 'error');
-            return;
-          }
-        } else {
-          if (!selectedItemId || isNaN(finalAmount)) {
-            showNotification('Selecciona un elemento válido.', 'error');
-            return;
-          }
-        }
-
-        if (txType === 'ingreso' && txCategory === 'producto') {
-          try {
-            const updatedProducts = products.map(prod => {
-              if (prod.id === selectedItemId) {
-                if (prod.stock < 1) {
-                  showNotification(`¡Sin stock! "${prod.name}" no está disponible.`, 'error');
-                  throw new Error('Sin stock');
-                }
-                const nextStock = prod.stock - 1;
-                if (nextStock <= 2) {
-                  showNotification(`⚠️ STOCK BAJO: "${prod.name}" tiene solo ${nextStock} pz en almacén.`, 'warning');
-                }
-                return { ...prod, stock: nextStock };
-              }
-              return prod;
-            });
-            setProducts(updatedProducts);
-          } catch (e) {
-            return;
-          }
-        }
-
-        const newTx = {
-          id: 't_' + Date.now(),
-          type: txType,
-          category: txCategory,
-          itemId: selectedItemId || null,
-          itemName: finalItemName,
-          amount: finalAmount,
-          date: txDate,
-          barberId: txCategory === 'servicio' ? txBarberId : null
-        };
-
-        setTransactions([newTx, ...transactions]);
-        showNotification('Registro financiero agregado correctamente.');
-        setTxAmount('');
-        setSelectedItemId('');
-        setTxItemName('');
-      };
-
-      const handleSaveItemEdit = (e) => {
-        e.preventDefault();
-        const price = parseFloat(editPrice);
-        const cost = parseFloat(editCost);
-
-        if (isNaN(price) || isNaN(cost)) {
-          showNotification('Los montos deben ser válidos.', 'error');
-          return;
-        }
-
-        if (editingItemType === 'servicio') {
-          setServices(services.map(s => {
-            if (s.id === editingItemId) return { ...s, price, cost };
-            return s;
-          }));
-          showNotification('Servicio actualizado.');
-        } else {
-          const stockVal = parseInt(newStock);
-          if (isNaN(stockVal)) {
-            showNotification('Stock inválido.', 'error');
-            return;
-          }
-          setProducts(products.map(p => {
-            if (p.id === editingItemId) return { ...p, price, cost, stock: stockVal };
-            return p;
-          }));
-          showNotification('Producto actualizado.');
-        }
-        setEditingItemId('');
-        setEditPrice('');
-        setEditCost('');
-        setNewStock('');
-      };
-
-      const startEditing = (type, item) => {
-        setEditingItemType(type);
-        setEditingItemId(item.id);
-        setEditPrice(item.price);
-        setEditCost(item.cost);
-        if (type === 'producto') {
-          setNewStock(item.stock);
-        }
-      };
-
-      const handleAdminAddAppointment = (e) => {
-        e.preventDefault();
-        if (!adminClientName || !adminBarber || !adminService || !adminPhone) {
-          showNotification('Completa todos los campos.', 'error');
-          return;
-        }
-
-        const newAppoint = {
-          id: 'a_' + Date.now(),
-          clientName: adminClientName,
-          phone: adminPhone,
-          barberId: adminBarber,
-          serviceId: adminService,
-          date: adminDate,
-          time: adminTime,
-          status: 'pendiente'
-        };
-
-        setAppointments([...appointments, newAppoint]);
-        showNotification(`Cita de ${adminClientName} agendada correctamente.`);
-        setAdminClientName('');
-        setAdminPhone('');
-        setAdminBarber('');
-        setAdminService('');
-      };
-
-      const handleCompleteAppointment = (id) => {
-        const app = appointments.find(a => a.id === id);
-        if (!app) return;
-
-        const service = services.find(s => s.id === app.serviceId);
-        if (!service) return;
-
-        const newTx = {
-          id: 't_' + Date.now(),
-          type: 'ingreso',
-          category: 'servicio',
-          itemId: service.id,
-          itemName: service.name,
-          amount: service.price,
-          date: app.date,
-          barberId: app.barberId
-        };
-
-        setTransactions([newTx, ...transactions]);
-        setAppointments(appointments.map(a => {
-          if (a.id === id) return { ...a, status: 'completada' };
-          return a;
-        }));
-
-        showNotification(`¡Cita completada! Ingreso registrado. 40% de comisión asignada al barbero.`);
-      };
-
-      const handleCancelAppointment = (id) => {
-        setAppointments(appointments.map(a => {
-          if (a.id === id) return { ...a, status: 'cancelada' };
-          return a;
-        }));
-        showNotification('Cita cancelada.', 'info');
-      };
-
-      // --- CÁLCULOS MEMOIZADOS ---
-      const lowStockAlerts = useMemo(() => products.filter(p => p.stock <= 2), [products]);
-
-      const financialTotals = useMemo(() => {
-        let totalRevenue = 0;
-        let totalCost = 0;
-        let totalBarberCommissions = 0;
-
-        transactions.forEach(tx => {
-          if (tx.type === 'ingreso') {
-            totalRevenue += tx.amount;
-            if (tx.category === 'servicio') {
-              const srv = services.find(s => s.id === tx.itemId);
-              if (srv) totalCost += srv.cost;
-              totalBarberCommissions += tx.amount * 0.40;
-            } else if (tx.category === 'producto') {
-              const prod = products.find(p => p.id === tx.itemId);
-              if (prod) totalCost += prod.cost;
-            }
-          } else if (tx.type === 'gasto') {
-            totalCost += tx.amount;
-          }
-        });
-
-        const netUtility = totalRevenue - totalCost - totalBarberCommissions;
-        const margin = totalRevenue > 0 ? (netUtility / totalRevenue) * 100 : 0;
-
-        return {
-          totalRevenue,
-          totalCost: totalCost + totalBarberCommissions,
-          totalBarberCommissions,
-          netUtility,
-          profitMargin: margin.toFixed(1)
-        };
-      }, [transactions, services, products]);
-
-      const itemDemands = useMemo(() => {
-        const srvCounts = {};
-        const prodCounts = {};
-
-        transactions.forEach(tx => {
-          if (tx.type === 'ingreso') {
-            if (tx.category === 'servicio') {
-              srvCounts[tx.itemName] = (srvCounts[tx.itemName] || 0) + tx.amount;
-            } else if (tx.category === 'producto') {
-              prodCounts[tx.itemName] = (prodCounts[tx.itemName] || 0) + tx.amount;
-            }
-          }
-        });
-
-        return {
-          services: Object.entries(srvCounts).map(([name, val]) => ({ name, value: val })).sort((a,b) => b.value - a.value),
-          products: Object.entries(prodCounts).map(([name, val]) => ({ name, value: val })).sort((a,b) => b.value - a.value),
-        };
-      }, [transactions]);
-
-      const barberMetrics = useMemo(() => {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const isThisWeek = (dateStr) => {
-          const date = new Date(dateStr);
-          const today = new Date();
-          return Math.ceil(Math.abs(today - date) / (1000 * 60 * 60 * 24)) <= 7;
-        };
-
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-
-        return barbers.map(barber => {
-          const barberTxs = transactions.filter(tx => tx.barberId === barber.id && tx.category === 'servicio');
-          let commissionToday = 0, commissionWeek = 0, commissionMonth = 0, commissionYear = 0;
-          let totalCuts = barberTxs.length;
-
-          barberTxs.forEach(tx => {
-            const comm = tx.amount * 0.40;
-            if (tx.date === todayStr) commissionToday += comm;
-            if (isThisWeek(tx.date)) commissionWeek += comm;
-            const txDateObj = new Date(tx.date);
-            if (txDateObj.getMonth() === currentMonth && txDateObj.getFullYear() === currentYear) commissionMonth += comm;
-            if (txDateObj.getFullYear() === currentYear) commissionYear += comm;
-          });
-
-          return {
-            ...barber,
-            totalCuts,
-            commissionToday,
-            commissionWeek,
-            commissionMonth,
-            commissionYear
-          };
-        });
-      }, [transactions, barbers]);
-
-      const projections = useMemo(() => {
-        const rev = financialTotals.totalRevenue;
-        const growthFactor = 1 + (projectionGrowth / 100);
-        const projectedRevenue = rev * growthFactor;
-        const marginRatio = financialTotals.totalRevenue > 0 ? (financialTotals.netUtility / financialTotals.totalRevenue) : 0.40;
-        const projectedUtility = projectedRevenue * marginRatio;
-
-        return {
-          projectedRevenue: projectedRevenue.toFixed(2),
-          projectedUtility: projectedUtility.toFixed(2),
-          increaseValue: (projectedRevenue - rev).toFixed(2)
-        };
-      }, [financialTotals, projectionGrowth]);
-
-      return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-16 md:pb-0">
-          
-          {/* CABECERA */}
-          <header className="bg-slate-900 border-b border-amber-500/20 px-4 py-3 flex justify-between items-center sticky top-0 z-40">
-            <div className="flex items-center space-x-3">
-              <span className="text-3xl">💈</span>
-              <div>
-                <h1 className="text-lg font-bold text-amber-500 tracking-wider">ELITE SHAVE</h1>
-                <p className="text-xs text-slate-400">Control Financiero & Reservas</p>
-              </div>
+                <!-- Actions -->
+                <div class="flex items-center gap-3">
+                    <a href="#agenda-seccion" class="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-salvia-600 hover:bg-salvia-700 text-white font-medium text-sm transition-all shadow-md shadow-salvia-100 hover:shadow-lg hover:shadow-salvia-200 active:scale-95">
+                        Reservar Consulta
+                    </a>
+                </div>
             </div>
-          </header>
-
-          {/* ALERTAS */}
-          {notification && (
-            <div className={`p-4 text-center font-semibold text-sm ${
-              notification.type === 'error' ? 'bg-red-900 text-red-100' :
-              notification.type === 'warning' ? 'bg-amber-600 text-slate-950' : 'bg-emerald-800 text-emerald-100'
-            } transition-all duration-300`}>
-              {notification.message}
-            </div>
-          )}
-
-          {lowStockAlerts.length > 0 && (
-            <div className="bg-red-950 border-y border-red-500/30 px-4 py-2 flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-red-400 text-xs sm:text-sm">
-                <span>🚨</span>
-                <strong className="font-bold">¡Stock Crítico!</strong>
-                <span>Mínimo 2 pz:</span>
-                <div className="flex flex-wrap gap-1.5 ml-2">
-                  {lowStockAlerts.map(p => (
-                    <span key={p.id} className="bg-red-900 text-red-100 px-2 py-0.5 rounded text-xs font-mono font-bold">
-                      {p.name} ({p.stock} pz)
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={() => setCurrentTab('inventario')}
-                className="text-xs bg-red-800 hover:bg-red-700 text-white px-2 py-1 rounded transition-colors whitespace-nowrap"
-              >
-                Surtir
-              </button>
-            </div>
-          )}
-
-          {/* CONTENIDO PRINCIPAL */}
-          <div className="flex-1 flex flex-col md:flex-row">
-            
-            {/* LATERAL MENU (DESKTOP ONLY) */}
-            <aside className="hidden md:flex w-64 bg-slate-900/50 border-r border-slate-800/80 p-4 space-y-2 flex-col shrink-0">
-              <div className="text-xs font-semibold text-slate-500 tracking-wider uppercase mb-3">
-                Administración
-              </div>
-              
-              <button
-                onClick={() => setCurrentTab('dashboard')}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
-                  currentTab === 'dashboard' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                }`}
-              >
-                <span>📊</span>
-                <span>Dashboard General</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentTab('citas')}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
-                  currentTab === 'citas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                }`}
-              >
-                <span>📅</span>
-                <span>Agenda & Citas</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentTab('finanzas')}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
-                  currentTab === 'finanzas' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                }`}
-              >
-                <span>💵</span>
-                <span>Ingresos y Gastos</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentTab('inventario')}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
-                  currentTab === 'inventario' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                }`}
-              >
-                <span>📦</span>
-                <span>Precios & Utilidad</span>
-              </button>
-
-              <button
-                onClick={() => setCurrentTab('barberos')}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center space-x-3 transition-all ${
-                  currentTab === 'barberos' ? 'bg-amber-500/10 text-amber-500 font-semibold border-l-2 border-amber-500' : 'hover:bg-slate-800/50 text-slate-400'
-                }`}
-              >
-                <span>💈</span>
-                <span>Comisiones Barberos</span>
-              </button>
-            </aside>
-
-            {/* SECCIÓN VISTA ACTIVA */}
-            <main className="flex-1 p-4 md:p-6 overflow-y-auto max-w-7xl mx-auto w-full pb-24 md:pb-6">
-              
-              {/* TAB: DASHBOARD */}
-              {currentTab === 'dashboard' && (
-                <div className="space-y-6">
-                  
-                  {/* Tarjetas Resumen */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                      <div className="flex justify-between items-center text-slate-400 text-xs">
-                        <span>INGRESOS BRUTOS</span>
-                        <span className="bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded text-xs font-bold">Ventas</span>
-                      </div>
-                      <div className="mt-2">
-                        <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalRevenue.toLocaleString()}</span>
-                      </div>
-                      <div className="mt-1 text-slate-500 text-xs">Monto acumulado</div>
-                    </div>
-
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                      <div className="flex justify-between items-center text-slate-400 text-xs">
-                        <span>COSTOS & COMISIONES</span>
-                        <span className="bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded text-xs font-bold">Egresos</span>
-                      </div>
-                      <div className="mt-2">
-                        <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalCost.toLocaleString()}</span>
-                      </div>
-                      <div className="mt-1 text-slate-500 text-xs">Insumos + Comisiones</div>
-                    </div>
-
-                    <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-4 flex flex-col justify-between">
-                      <div className="flex justify-between items-center text-slate-400 text-xs">
-                        <span>UTILIDAD TOTAL</span>
-                        <span className="bg-amber-500/15 text-amber-500 px-1.5 py-0.5 rounded text-xs font-bold">Rentabilidad</span>
-                      </div>
-                      <div className="mt-2">
-                        <span className="text-2xl font-bold font-mono text-amber-500">${financialTotals.netUtility.toLocaleString()}</span>
-                      </div>
-                      <div className="mt-1 text-slate-400 text-xs font-semibold">
-                        Margen Neto: {financialTotals.profitMargin}%
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
-                      <div className="flex justify-between items-center text-slate-400 text-xs">
-                        <span>COMISIONES DE BARBEROS</span>
-                        <span className="bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded text-xs font-bold">40% Pago</span>
-                      </div>
-                      <div className="mt-2">
-                        <span className="text-2xl font-bold font-mono text-slate-100">${financialTotals.totalBarberCommissions.toLocaleString()}</span>
-                      </div>
-                      <div className="mt-1 text-slate-500 text-xs">Repartido a barberos</div>
-                    </div>
-                  </div>
-
-                  {/* Demandas */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase font-bold">Demanda de Servicios</h3>
-                      {itemDemands.services.length === 0 ? (
-                        <p className="text-xs text-slate-500">Sin transacciones registradas.</p>
-                      ) : (
-                        <div className="space-y-4">
-                          {itemDemands.services.map((item, idx) => {
-                            const percent = (item.value / (financialTotals.totalRevenue || 1)) * 100;
-                            return (
-                              <div key={idx} className="space-y-1">
-                                <div className="flex justify-between text-xs">
-                                  <span className="font-semibold text-slate-300">{item.name}</span>
-                                  <span className="font-mono text-slate-400">${item.value} ({percent.toFixed(0)}%)</span>
-                                </div>
-                                <div className="w-full bg-slate-800 rounded-full h-2">
-                                  <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase font-bold">Demanda de Productos</h3>
-                      {itemDemands.products.length === 0 ? (
-                        <p className="text-xs text-slate-500">Sin ventas registradas.</p>
-                      ) : (
-                        <div className="space-y-4">
-                          {itemDemands.products.map((item, idx) => {
-                            const percent = (item.value / (financialTotals.totalRevenue || 1)) * 100;
-                            return (
-                              <div key={idx} className="space-y-1">
-                                <div className="flex justify-between text-xs">
-                                  <span className="font-semibold text-slate-300">{item.name}</span>
-                                  <span className="font-mono text-slate-400">${item.value} ({percent.toFixed(0)}%)</span>
-                                </div>
-                                <div className="w-full bg-slate-800 rounded-full h-2">
-                                  <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${percent}%` }}></div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Proyecciones */}
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                    <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-800 pb-4 mb-4">
-                      <div>
-                        <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Proyección Financiera</h3>
-                        <p className="text-xs text-slate-400">Estima tus ingresos futuros basados en el crecimiento</p>
-                      </div>
-                      <div className="mt-3 sm:mt-0 flex items-center space-x-2">
-                        <label className="text-xs text-slate-400 font-bold whitespace-nowrap">Crecimiento:</label>
-                        <select
-                          value={projectionGrowth}
-                          onChange={(e) => setProjectionGrowth(parseInt(e.target.value))}
-                          className="bg-slate-950 border border-slate-800 text-xs rounded px-2.5 py-1.5 text-amber-500 font-bold focus:outline-none"
-                        >
-                          <option value="5">5%</option>
-                          <option value="10">10%</option>
-                          <option value="20">20%</option>
-                          <option value="35">35%</option>
-                          <option value="50">50%</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="bg-slate-950 p-4 rounded-lg border border-slate-850">
-                        <span className="text-xs text-slate-400">Ingresos Proyectados</span>
-                        <div className="text-xl font-bold font-mono text-emerald-400 mt-1">${projections.projectedRevenue}</div>
-                        <p className="text-xs text-slate-400 mt-2">Diferencia neta estimada: <span className="text-emerald-400 font-mono font-bold">+${projections.increaseValue}</span></p>
-                      </div>
-                      <div className="bg-slate-950 p-4 rounded-lg border border-slate-850">
-                        <span className="text-xs text-slate-400">Utilidad Neta Proyectada</span>
-                        <div className="text-xl font-bold font-mono text-amber-500 mt-1">${projections.projectedUtility}</div>
-                        <p className="text-xs text-slate-400 mt-2">Manteniendo margen operativo actual.</p>
-                      </div>
-                      <div className="bg-slate-950 p-4 rounded-lg border border-slate-850 flex flex-col justify-between">
-                        <div>
-                          <span className="text-xs text-slate-500">Métricas</span>
-                          <p className="text-xs text-slate-300 mt-1">Los balances mensuales te permiten presupuestar compras de insumos a menor costo.</p>
-                        </div>
-                        <span className="text-[10px] text-amber-500 font-semibold uppercase mt-2">💡 Tip: Ofrece combos especiales para elevar el ticket promedio.</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: CITAS & AGENDA */}
-              {currentTab === 'citas' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-                      <div>
-                        <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Nueva Cita (Llamada / Local)</h3>
-                        <p className="text-xs text-slate-400">Registrar cita directa administrada</p>
-                      </div>
-                      
-                      <form onSubmit={handleAdminAddAppointment} className="space-y-3.5">
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Nombre del Cliente *</label>
-                          <input
-                            type="text"
-                            placeholder="Ej. Juan Pérez"
-                            value={adminClientName}
-                            onChange={(e) => setAdminClientName(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Teléfono *</label>
-                          <input
-                            type="text"
-                            placeholder="Ej. 555-0101"
-                            value={adminPhone}
-                            onChange={(e) => setAdminPhone(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Servicio *</label>
-                          <select
-                            value={adminService}
-                            onChange={(e) => setAdminService(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-                            required
-                          >
-                            <option value="">Selecciona un Servicio</option>
-                            {services.map(s => (
-                              <option key={s.id} value={s.id}>{s.name} - ${s.price}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Barbero *</label>
-                          <select
-                            value={adminBarber}
-                            onChange={(e) => setAdminBarber(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-                            required
-                          >
-                            <option value="">Selecciona un Barbero</option>
-                            {barbers.map(b => (
-                              <option key={b.id} value={b.id}>{b.avatar} {b.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Fecha</label>
-                            <input
-                              type="date"
-                              value={adminDate}
-                              onChange={(e) => setAdminDate(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 focus:outline-none"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Hora</label>
-                            <input
-                              type="time"
-                              value={adminTime}
-                              onChange={(e) => setAdminTime(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-300 focus:outline-none"
-                              required
-                            />
-                          </div>
-                        </div>
-
-                        <button
-                          type="submit"
-                          className="w-full mt-2 bg-amber-500 text-slate-950 font-bold py-2.5 rounded-lg text-xs hover:bg-amber-600 transition-colors"
-                        >
-                          Agendar en Sistema
-                        </button>
-                      </form>
-                    </div>
-
-                    <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Agenda de Citas Activas</h3>
-                        <span className="text-xs bg-slate-850 px-2.5 py-1 rounded-md text-slate-400">
-                          Total: {appointments.filter(a => a.status === 'pendiente').length}
-                        </span>
-                      </div>
-
-                      {appointments.length === 0 ? (
-                        <p className="text-xs text-slate-500 text-center py-8">Sin citas registradas.</p>
-                      ) : (
-                        <div className="space-y-3">
-                          {appointments.map(app => {
-                            const service = services.find(s => s.id === app.serviceId);
-                            const barber = barbers.find(b => b.id === app.barberId);
-                            return (
-                              <div
-                                key={app.id}
-                                className={`p-3 rounded-lg border flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0 ${
-                                  app.status === 'completada' ? 'bg-slate-950/40 border-slate-900 opacity-60' :
-                                  app.status === 'cancelada' ? 'bg-red-950/10 border-red-950/30 opacity-50 line-through' :
-                                  'bg-slate-950 border-slate-850'
-                                }`}
-                              >
-                                <div className="space-y-1">
-                                  <div className="flex items-center space-x-2">
-                                    <span className="font-bold text-slate-200 text-xs sm:text-sm">{app.clientName}</span>
-                                    <span className="text-slate-500 text-[11px] font-mono">({app.phone})</span>
-                                    {app.status === 'pendiente' && <span className="bg-amber-500/10 text-amber-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Pendiente</span>}
-                                    {app.status === 'completada' && <span className="bg-emerald-500/15 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Completada</span>}
-                                    {app.status === 'cancelada' && <span className="bg-red-500/15 text-red-400 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Cancelada</span>}
-                                  </div>
-                                  <div className="text-xs text-slate-400">
-                                    ✂️ {service ? service.name : 'No especificado'} (${service?.price}) • 💈 Barbero: <strong className="text-amber-500">{barber ? barber.name : 'Asignado'}</strong>
-                                  </div>
-                                  <div className="text-[11px] text-slate-500 font-mono">
-                                    Fecha: {app.date} • Hora: {app.time} hrs
-                                  </div>
-                                </div>
-
-                                {app.status === 'pendiente' && (
-                                  <div className="flex space-x-2 w-full sm:w-auto">
-                                    <button
-                                      onClick={() => handleCompleteAppointment(app.id)}
-                                      className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-3 py-2 rounded-lg text-xs transition-colors"
-                                    >
-                                      ✓ Completar
-                                    </button>
-                                    <button
-                                      onClick={() => handleCancelAppointment(app.id)}
-                                      className="bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-300 px-3 py-2 rounded-lg text-xs transition-colors"
-                                    >
-                                      Cancelar
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: FINANZAS */}
-              {currentTab === 'finanzas' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-                      <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Registro Manual de Caja</h3>
-                      
-                      <form onSubmit={handleAddTransaction} className="space-y-3.5">
-                        <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded border border-slate-800">
-                          <button
-                            type="button"
-                            onClick={() => { setTxType('ingreso'); handleTxCategoryChange('servicio'); }}
-                            className={`py-1.5 text-xs font-bold rounded ${txType === 'ingreso' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}
-                          >
-                            Ingreso (+)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setTxType('gasto'); handleTxCategoryChange('operativo'); }}
-                            className={`py-1.5 text-xs font-bold rounded ${txType === 'gasto' ? 'bg-red-500 text-white' : 'text-slate-400'}`}
-                          >
-                            Gasto (-)
-                          </button>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Categoría</label>
-                          <select
-                            value={txCategory}
-                            onChange={(e) => handleTxCategoryChange(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
-                          >
-                            {txType === 'ingreso' ? (
-                              <>
-                                <option value="servicio">Servicio de Barbería</option>
-                                <option value="producto">Producto de Inventario</option>
-                              </>
-                            ) : (
-                              <>
-                                <option value="operativo">Gasto Operativo (Renta, luz...)</option>
-                                <option value="nomina">Comisiones o Pago</option>
-                                <option value="insumos">Insumos de Barbería</option>
-                              </>
-                            )}
-                          </select>
-                        </div>
-
-                        {(txCategory === 'servicio' || txCategory === 'producto') ? (
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Seleccionar Item</label>
-                            <select
-                              value={selectedItemId}
-                              onChange={(e) => handleItemSelectChange(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
-                              required
-                            >
-                              <option value="">Selecciona una opción</option>
-                              {txCategory === 'servicio'
-                                ? services.map(s => <option key={s.id} value={s.id}>{s.name} (${s.price})</option>)
-                                : products.map(p => <option key={p.id} value={p.id} disabled={p.stock < 1}>{p.name} (${p.price} - Stock: {p.stock})</option>)
-                              }
-                            </select>
-                          </div>
-                        ) : (
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Concepto / Descripción</label>
-                            <input
-                              type="text"
-                              placeholder="Ej. Pago de Renta"
-                              value={txItemName}
-                              onChange={(e) => setTxItemName(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
-                              required
-                            />
-                          </div>
-                        )}
-
-                        {txCategory === 'servicio' && txType === 'ingreso' && (
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Barbero Asignado</label>
-                            <select
-                              value={txBarberId}
-                              onChange={(e) => setTxBarberId(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
-                              required
-                            >
-                              <option value="">Selecciona un barbero</option>
-                              {barbers.map(b => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Total Monto ($) *</label>
-                          <input
-                            type="number"
-                            value={txAmount}
-                            onChange={(e) => setTxAmount(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none"
-                            required
-                            disabled={txCategory === 'servicio' || txCategory === 'producto'}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Fecha</label>
-                          <input
-                            type="date"
-                            value={txDate}
-                            onChange={(e) => setTxDate(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none"
-                            required
-                          />
-                        </div>
-
-                        <button
-                          type="submit"
-                          className={`w-full font-bold py-2.5 rounded-lg text-xs transition-colors ${
-                            txType === 'ingreso' ? 'bg-amber-500 hover:bg-amber-600 text-slate-950' : 'bg-red-600 hover:bg-red-700 text-white'
-                          }`}
-                        >
-                          Registrar Flujo
-                        </button>
-                      </form>
-                    </div>
-
-                    <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
-                      <h3 className="text-sm font-semibold text-amber-500 mb-4 tracking-wide uppercase font-bold">Historial de Flujo de Caja</h3>
-                      <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0">
-                        <table className="w-full text-left text-xs border-collapse min-w-[600px]">
-                          <thead>
-                            <tr className="border-b border-slate-800 text-slate-400 font-bold">
-                              <th className="py-2.5">Fecha</th>
-                              <th>Concepto</th>
-                              <th>Categoría</th>
-                              <th>Barbero</th>
-                              <th className="text-right">Monto</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800/60">
-                            {transactions.map(tx => {
-                              const b = barbers.find(barb => barb.id === tx.barberId);
-                              return (
-                                <tr key={tx.id} className="hover:bg-slate-950/25">
-                                  <td className="py-3 font-mono text-slate-400 whitespace-nowrap">{tx.date}</td>
-                                  <td className="font-semibold text-slate-200">{tx.itemName}</td>
-                                  <td className="whitespace-nowrap">
-                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                                      tx.type === 'ingreso' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                                    }`}>
-                                      {tx.category}
-                                    </span>
-                                  </td>
-                                  <td className="text-slate-400 whitespace-nowrap">{b ? `${b.avatar} ${b.name}` : '-'}</td>
-                                  <td className={`text-right font-mono font-bold whitespace-nowrap ${tx.type === 'ingreso' ? 'text-emerald-400' : 'text-red-400'}`}>
-                                    {tx.type === 'ingreso' ? '+' : '-'}${tx.amount}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: INVENTARIO & PRECIOS */}
-              {currentTab === 'inventario' && (
-                <div className="space-y-6">
-                  {editingItemId && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 p-5 rounded-xl space-y-4">
-                      <div className="flex justify-between items-center">
-                        <h3 className="text-sm font-bold text-amber-500 uppercase">Ajustar Precios de {editingItemType}</h3>
-                        <button onClick={() => setEditingItemId('')} className="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md">Cancelar</button>
-                      </div>
-
-                      <form onSubmit={handleSaveItemEdit} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Precio Público ($)</label>
-                          <input
-                            type="number"
-                            value={editPrice}
-                            onChange={(e) => setEditPrice(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-amber-500 font-bold focus:outline-none"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Costo Unitario ($)</label>
-                          <input
-                            type="number"
-                            value={editCost}
-                            onChange={(e) => setEditCost(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-red-400 font-bold focus:outline-none"
-                            required
-                          />
-                        </div>
-                        {editingItemType === 'producto' && (
-                          <div>
-                            <label className="block text-xs text-slate-400 mb-1">Stock de Almacén</label>
-                            <input
-                              type="number"
-                              value={newStock}
-                              onChange={(e) => setNewStock(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-indigo-400 font-bold focus:outline-none"
-                              required
-                            />
-                          </div>
-                        )}
-                        <div className="flex items-end">
-                          <button type="submit" className="w-full bg-amber-500 text-slate-950 font-bold py-2.5 rounded-lg text-xs hover:bg-amber-600 transition-colors">Guardar Tarifa</button>
-                        </div>
-                      </form>
-                    </div>
-                  )}
-
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                    <h3 className="text-sm font-bold text-amber-500 mb-4 uppercase">Costo y Margen de Utilidad (Servicios)</h3>
-                    <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0">
-                      <table className="w-full text-left text-xs border-collapse min-w-[600px]">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-slate-400 font-bold">
-                            <th className="py-2.5">Servicio</th>
-                            <th>P. Público</th>
-                            <th>Insumos</th>
-                            <th>Pago Barbero (40%)</th>
-                            <th>Utilidad Neta (60% - Costos)</th>
-                            <th className="text-right">Ajustes</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {services.map(s => {
-                            const barberComm = s.price * 0.40;
-                            const netUtility = s.price - s.cost - barberComm;
-                            return (
-                              <tr key={s.id} className="hover:bg-slate-950/15">
-                                <td className="py-3 font-semibold text-slate-200">{s.name}</td>
-                                <td className="font-mono text-slate-300 whitespace-nowrap">${s.price}</td>
-                                <td className="font-mono text-red-400 whitespace-nowrap">${s.cost}</td>
-                                <td className="font-mono text-indigo-400 whitespace-nowrap">${barberComm.toFixed(2)}</td>
-                                <td className="font-mono text-emerald-400 font-bold whitespace-nowrap">${netUtility.toFixed(2)}</td>
-                                <td className="text-right whitespace-nowrap">
-                                  <button onClick={() => startEditing('servicio', s)} className="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-500 px-2.5 py-1 rounded-md transition-colors font-semibold">Configurar</button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                    <h3 className="text-sm font-bold text-amber-500 mb-4 uppercase">Inventario y Utilidades (Productos)</h3>
-                    <div className="overflow-x-auto w-full -mx-4 px-4 sm:mx-0 sm:px-0">
-                      <table className="w-full text-left text-xs border-collapse min-w-[700px]">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-slate-400 font-bold">
-                            <th className="py-2.5">Producto</th>
-                            <th>Stock</th>
-                            <th>P. Público</th>
-                            <th>Costo Adquisición</th>
-                            <th>Utilidad Bruta</th>
-                            <th>Estatus</th>
-                            <th className="text-right">Ajustes</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {products.map(p => {
-                            const utility = p.price - p.cost;
-                            return (
-                              <tr key={p.id} className="hover:bg-slate-950/15">
-                                <td className="py-3 font-semibold text-slate-200">{p.name}</td>
-                                <td className="font-mono text-slate-200 font-bold whitespace-nowrap">{p.stock} pz</td>
-                                <td className="font-mono text-slate-300 whitespace-nowrap">${p.price}</td>
-                                <td className="font-mono text-red-400 whitespace-nowrap">${p.cost}</td>
-                                <td className="font-mono text-emerald-400 font-bold whitespace-nowrap">${utility}</td>
-                                <td className="whitespace-nowrap">
-                                  {p.stock <= 2 ? (
-                                    <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-bold">STOCK BAJO</span>
-                                  ) : (
-                                    <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded text-[10px] font-bold">ESTABLE</span>
-                                  )}
-                                </td>
-                                <td className="text-right whitespace-nowrap">
-                                  <button onClick={() => startEditing('producto', p)} className="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-500 px-2.5 py-1 rounded-md transition-colors font-semibold">Configurar</button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB: BARBEROS */}
-              {currentTab === 'barberos' && (
-                <div className="space-y-6">
-                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-                    <div className="border-b border-slate-800 pb-3 mb-4">
-                      <h3 className="text-sm font-semibold text-amber-500 tracking-wide uppercase font-bold">Rendimiento de Barberos (Esquema 60/40)</h3>
-                      <p className="text-xs text-slate-400">Corte/Servicio: 40% de comisión para el Barbero y 60% retenido por la Barbería.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {barberMetrics.map(barber => (
-                        <div key={barber.id} className="bg-slate-950 border border-slate-850 rounded-xl p-5 space-y-4">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-3xl bg-slate-900 p-2 rounded-lg">{barber.avatar}</span>
-                            <div>
-                              <h4 className="font-bold text-slate-100">{barber.name}</h4>
-                              <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-bold">Activo</span>
-                            </div>
-                          </div>
-
-                          <div className="bg-slate-900/50 p-3 rounded-lg flex justify-between items-center text-xs">
-                            <span className="text-slate-400">Servicios realizados:</span>
-                            <span className="font-bold text-slate-100 font-mono">{barber.totalCuts}</span>
-                          </div>
-
-                          <div className="space-y-2">
-                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Historial Comisiones (40%):</span>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div className="bg-slate-900/30 p-2 rounded">
-                                <span className="block text-[10px] text-slate-400 font-semibold">Hoy</span>
-                                <span className="font-bold text-emerald-400 font-mono text-sm">${barber.commissionToday}</span>
-                              </div>
-                              <div className="bg-slate-900/30 p-2 rounded">
-                                <span className="block text-[10px] text-slate-400 font-semibold">Semana</span>
-                                <span className="font-bold text-emerald-400 font-mono text-sm">${barber.commissionWeek}</span>
-                              </div>
-                              <div className="bg-slate-900/30 p-2 rounded">
-                                <span className="block text-[10px] text-slate-400 font-semibold">Mes</span>
-                                <span className="font-bold text-emerald-400 font-mono text-sm">${barber.commissionMonth}</span>
-                              </div>
-                              <div className="bg-slate-900/30 p-2 rounded">
-                                <span className="block text-[10px] text-slate-400 font-semibold">Año</span>
-                                <span className="font-bold text-emerald-400 font-mono text-sm">${barber.commissionYear}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </main>
-          </div>
-
-          {/* MENÚ DE NAVEGACIÓN MÓVIL FIJO (BOTTOM TAB NAV) */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex justify-around py-2 z-40 shadow-xl">
-            <button
-              onClick={() => setCurrentTab('dashboard')}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-                currentTab === 'dashboard' ? 'text-amber-500 scale-105' : 'text-slate-400'
-              }`}
-            >
-              <span className="text-lg">📊</span>
-              <span className="text-[10px] font-bold mt-0.5">Dashboard</span>
-            </button>
-            <button
-              onClick={() => setCurrentTab('citas')}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-                currentTab === 'citas' ? 'text-amber-500 scale-105' : 'text-slate-400'
-              }`}
-            >
-              <span className="text-lg">📅</span>
-              <span className="text-[10px] font-bold mt-0.5">Agenda</span>
-            </button>
-            <button
-              onClick={() => setCurrentTab('finanzas')}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-                currentTab === 'finanzas' ? 'text-amber-500 scale-105' : 'text-slate-400'
-              }`}
-            >
-              <span className="text-lg">💵</span>
-              <span className="text-[10px] font-bold mt-0.5">Caja</span>
-            </button>
-            <button
-              onClick={() => setCurrentTab('inventario')}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-                currentTab === 'inventario' ? 'text-amber-500 scale-105' : 'text-slate-400'
-              }`}
-            >
-              <span className="text-lg">📦</span>
-              <span className="text-[10px] font-bold mt-0.5">Inventario</span>
-            </button>
-            <button
-              onClick={() => setCurrentTab('barberos')}
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition-all ${
-                currentTab === 'barberos' ? 'text-amber-500 scale-105' : 'text-slate-400'
-              }`}
-            >
-              <span className="text-lg">💈</span>
-              <span className="text-[10px] font-bold mt-0.5">Barberos</span>
-            </button>
-          </nav>
-
-          <footer className="hidden md:block bg-slate-900 border-t border-slate-800 py-3 text-center text-slate-500 text-[10px] mt-auto">
-            &copy; 2026 Elite Shave Barbería. Control Financiero Inteligente.
-          </footer>
         </div>
-      );
-    }
+    </header>
 
-    // Inicializar y renderizar la App mediante React 18
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28">
+        <!-- Decorative subtle elements -->
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-salvia-100 rounded-full filter blur-3xl opacity-60 pointer-events-none"></div>
+        <div class="absolute top-1/2 -left-40 w-96 h-96 bg-blue-50 rounded-full filter blur-3xl opacity-60 pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="grid lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+                <!-- Hero Text -->
+                <div class="lg:col-span-7 space-y-8 text-center lg:text-left">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-salvia-100/70 border border-salvia-200/50 text-salvia-800 text-xs font-semibold tracking-wide uppercase">
+                        <span class="flex h-2 w-2 rounded-full bg-salvia-500 animate-pulse"></span>
+                        Atención Personalizada de Alta Gama
+                    </div>
+                    <h1 class="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 leading-[1.1] tracking-tight">
+                        La sonrisa que mereces, <br class="hidden sm:inline">
+                        <span class="text-salvia-600 italic font-normal">diseñada de manera única para ti</span>
+                    </h1>
+                    <p class="text-lg text-slate-600 max-w-2xl mx-auto lg:mx-0">
+                        Disfruta de una experiencia dental diferente. Atendido de principio a fin de manera exclusiva por el <strong>Dr. Adrián Méndez</strong>, combinando tecnología digital avanzada, un ambiente relajante y flujos optimizados para cuidar de tu tiempo.
+                    </p>
+                    <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                        <a href="#agenda-seccion" class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl bg-salvia-600 hover:bg-salvia-700 text-white font-semibold shadow-xl shadow-salvia-200/50 hover:shadow-2xl hover:shadow-salvia-300 transition-all transform hover:-translate-y-0.5 active:translate-y-0">
+                            Agendar Consulta Directa
+                        </a>
+                        <a href="#servicios" class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 rounded-2xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-semibold transition-all">
+                            Ver Tratamientos Premium
+                        </a>
+                    </div>
+                    
+                    <!-- Trust Stats -->
+                    <div class="pt-8 border-t border-slate-200/60 grid grid-cols-3 gap-6 max-w-md mx-auto lg:mx-0">
+                        <div>
+                            <p class="text-3xl font-bold text-slate-900 font-serif">100%</p>
+                            <p class="text-xs text-slate-500 mt-1">Atención por el Dr. Adrián</p>
+                        </div>
+                        <div>
+                            <p class="text-3xl font-bold text-slate-900 font-serif">12+</p>
+                            <p class="text-xs text-slate-500 mt-1">Años de trayectoria</p>
+                        </div>
+                        <div>
+                            <p class="text-3xl font-bold text-slate-900 font-serif">5.0★</p>
+                            <p class="text-xs text-slate-500 mt-1">Calificación promedio</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hero Image -->
+                <div class="lg:col-span-5 relative">
+                    <div class="relative w-full max-w-sm mx-auto aspect-[3/4] rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white bg-slate-100">
+                        <img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=800" 
+                             alt="Dr. Adrián Méndez - Especialista en Odontología Estética" 
+                             class="w-full h-full object-cover"
+                             onerror="this.src='https://placehold.co/600x800/e3eae4/43584c?text=Dr.+Adrian+Mendez'">
+                        
+                        <!-- Premium Badge -->
+                        <div class="absolute top-6 right-6 p-3 rounded-xl backdrop-blur-md bg-slate-950/80 border border-white/20 shadow-xl flex items-center gap-2">
+                            <span class="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="text-[10px] text-white font-semibold">Agenda 100% Sincronizada</span>
+                        </div>
+
+                        <!-- Floating Card -->
+                        <div class="absolute bottom-6 left-6 right-6 p-5 rounded-2xl backdrop-blur-md bg-white/95 border border-white/20 shadow-xl flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-salvia-100 flex items-center justify-center text-salvia-700 text-xl shrink-0">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-slate-900 text-sm">Cero Tiempos de Espera</h4>
+                                <p class="text-xs text-slate-500 mt-0.5">Sincronización de citas en tiempo real para tu máxima comodidad.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Synchronization Grid -->
+    <section class="bg-white py-12 border-y border-slate-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-xs font-semibold text-slate-400 tracking-widest uppercase mb-8">Sincronización Inteligente en Tiempo Real</p>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                <div class="p-4 rounded-xl hover:bg-slate-50 transition-colors">
+                    <div class="w-10 h-10 rounded-full bg-salvia-100 text-salvia-700 mx-auto flex items-center justify-center mb-3"><i class="fa-solid fa-calendar-days"></i></div>
+                    <span class="block text-xs font-bold text-slate-900">Agenda en Vivo</span>
+                    <span class="block text-[10px] text-slate-400 mt-0.5">Sincronización Inmediata</span>
+                </div>
+                <div class="p-4 rounded-xl hover:bg-slate-50 transition-colors">
+                    <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center mb-3"><i class="fa-brands fa-whatsapp"></i></div>
+                    <span class="block text-xs font-bold text-slate-900">Recordatorio Activo</span>
+                    <span class="block text-[10px] text-slate-400 mt-0.5">Confirmaciones por Mensaje</span>
+                </div>
+                <div class="p-4 rounded-xl hover:bg-slate-50 transition-colors">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 mx-auto flex items-center justify-center mb-3"><i class="fa-solid fa-notes-medical"></i></div>
+                    <span class="block text-xs font-bold text-slate-900">Ficha Digital</span>
+                    <span class="block text-[10px] text-slate-400 mt-0.5">Historial Clínico Seguro</span>
+                </div>
+                <div class="p-4 rounded-xl hover:bg-slate-50 transition-colors">
+                    <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-700 mx-auto flex items-center justify-center mb-3"><i class="fa-solid fa-bell"></i></div>
+                    <span class="block text-xs font-bold text-slate-900">Avisos de Consulta</span>
+                    <span class="block text-[10px] text-slate-400 mt-0.5">Alertas de Recordatorio</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="servicios" class="py-24 bg-pizarra-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-4">
+                <span class="text-salvia-600 font-semibold text-sm uppercase tracking-wider">Tratamientos Especializados</span>
+                <h2 class="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900">Servicios Diseñados por el Dr. Adrián</h2>
+                <p class="text-slate-600 text-base sm:text-lg">Cada procedimiento es planificado y ejecutado de manera exclusiva por el Dr. Adrián Méndez, garantizando un estándar clínico de excelencia.</p>
+            </div>
+
+            <!-- Services Grid -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Card 1 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-100 hover:border-salvia-200 hover:shadow-xl hover:shadow-salvia-100/30 transition-all duration-300 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-2xl bg-salvia-50 flex items-center justify-center text-salvia-600 mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fa-solid fa-align-center text-2xl"></i>
+                    </div>
+                    <h3 class="font-serif text-xl font-bold text-slate-900 mb-2">Ortodoncia Invisible</h3>
+                    <p class="text-sm text-slate-500 mb-6 flex-grow">Alinea tu sonrisa cómodamente con alineadores transparentes de última generación, sin brackets.</p>
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+                        <span class="text-xs text-slate-400">Inversión <strong class="text-slate-900 text-sm">$1,200</strong></span>
+                        <button onclick="preSelectService('Ortodoncia Invisible')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-salvia-600 hover:text-salvia-700 transition-colors">
+                            Reservar <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-100 hover:border-salvia-200 hover:shadow-xl hover:shadow-salvia-100/30 transition-all duration-300 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-2xl bg-salvia-50 flex items-center justify-center text-salvia-600 mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fa-solid fa-wand-magic-sparkles text-2xl"></i>
+                    </div>
+                    <h3 class="font-serif text-xl font-bold text-slate-900 mb-2">Diseño de Sonrisa</h3>
+                    <p class="text-sm text-slate-500 mb-6 flex-grow">Carillas cerámicas ultrafinas para transformar por completo la simetría, forma y color de tus dientes.</p>
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+                        <span class="text-xs text-slate-400">Inversión <strong class="text-slate-900 text-sm">$1,500</strong></span>
+                        <button onclick="preSelectService('Diseño de Sonrisa')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-salvia-600 hover:text-salvia-700 transition-colors">
+                            Reservar <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-100 hover:border-salvia-200 hover:shadow-xl hover:shadow-salvia-100/30 transition-all duration-300 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-2xl bg-salvia-50 flex items-center justify-center text-salvia-600 mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fa-solid fa-circle-nodes text-2xl"></i>
+                    </div>
+                    <h3 class="font-serif text-xl font-bold text-slate-900 mb-2">Implantes de Zirconio</h3>
+                    <p class="text-sm text-slate-500 mb-6 flex-grow">Recupera la funcionalidad y estética con implantes premium biocompatibles libres de metales.</p>
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+                        <span class="text-xs text-slate-400">Inversión <strong class="text-slate-900 text-sm">$800</strong></span>
+                        <button onclick="preSelectService('Implantes Dentales')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-salvia-600 hover:text-salvia-700 transition-colors">
+                            Reservar <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-100 hover:border-salvia-200 hover:shadow-xl hover:shadow-salvia-100/30 transition-all duration-300 flex flex-col h-full group">
+                    <div class="w-14 h-14 rounded-2xl bg-salvia-50 flex items-center justify-center text-salvia-600 mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fa-solid fa-teeth-water text-2xl"></i>
+                    </div>
+                    <h3 class="font-serif text-xl font-bold text-slate-900 mb-2">Blanqueamiento Láser</h3>
+                    <p class="text-sm text-slate-500 mb-6 flex-grow">Aclara tus dientes hasta 5 tonos en una sola sesión de 45 minutos con tecnología fría de alta intensidad.</p>
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
+                        <span class="text-xs text-slate-400">Precio Fijo <strong class="text-slate-900 text-sm">$250</strong></span>
+                        <button onclick="preSelectService('Blanqueamiento Láser')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-salvia-600 hover:text-salvia-700 transition-colors">
+                            Reservar <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Doctor Biography Section -->
+    <section id="doctor" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-12 gap-12 items-center">
+                <!-- Image side -->
+                <div class="lg:col-span-5">
+                    <div class="relative w-full max-w-sm mx-auto aspect-[4/5] rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-slate-100 bg-slate-100">
+                        <img src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=800" 
+                             alt="Dr. Adrián Méndez operando en consultorio" 
+                             class="w-full h-full object-cover"
+                             onerror="this.src='https://placehold.co/600x800/e3eae4/43584c?text=Dr.+Adrian+Mendez'">
+                    </div>
+                </div>
+
+                <!-- Text Biography side -->
+                <div class="lg:col-span-7 space-y-6">
+                    <span class="text-salvia-600 font-semibold text-sm uppercase tracking-wider">Especialista Responsable</span>
+                    <h2 class="font-serif text-3xl sm:text-4xl font-bold text-slate-900">Dr. Adrián Méndez</h2>
+                    <p class="text-salvia-700 font-semibold text-base italic">"Mi filosofía es la odontología sin prisa. Me tomo el tiempo necesario para comprender tus expectativas y diseñar una sonrisa saludable y armónica."</p>
+                    <div class="text-slate-600 text-sm leading-relaxed space-y-4">
+                        <p>Egresado de la <strong>Universidad Autónoma de México (UNAM)</strong> con Especialidad en Ortodoncia y Maestría en Estética Dental por el <strong>NYU College of Dentistry</strong>. El Dr. Adrián es pionero en la implementación de flujos digitales completos para diagnóstico y diseño de sonrisa.</p>
+                        <p>En este consultorio no serás atendido por asistentes clínicos o doctores rotativos. El Dr. Adrián asume la responsabilidad total de tu plan de tratamiento, brindándote la tranquilidad y el rigor médico que mereces.</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 pt-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-salvia-50 flex items-center justify-center text-salvia-600 text-xs shrink-0"><i class="fa-solid fa-graduation-cap"></i></div>
+                            <span class="text-xs font-semibold text-slate-800">Céd. Prof: 8493102</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-salvia-50 flex items-center justify-center text-salvia-600 text-xs shrink-0"><i class="fa-solid fa-certificate"></i></div>
+                            <span class="text-xs font-semibold text-slate-800">Miembro Activo ADM</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-4">
+                        <a href="#agenda-seccion" class="inline-flex items-center justify-center px-6 py-3 rounded-xl border border-salvia-200 text-salvia-700 hover:bg-salvia-50 font-medium transition-all gap-2 text-sm">
+                            Agendar Cita Directa <i class="fa-solid fa-calendar text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Booking Engine Section -->
+    <section id="agenda-seccion" class="py-24 bg-slate-50 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(#e3eae4_1px,transparent_1px)] [background-size:16px_16px] opacity-70"></div>
+        
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center max-w-2xl mx-auto mb-12 space-y-4">
+                <span class="text-salvia-600 font-semibold text-sm uppercase tracking-wider">Flujo de Reserva</span>
+                <h2 class="font-serif text-3xl sm:text-4xl font-bold text-slate-900">Agenda tu Consulta en un Minuto</h2>
+                <p class="text-slate-500 text-sm sm:text-base">Sincronizado directamente con la agenda del Dr. Adrián Méndez. Recibirás tu confirmación instantánea por WhatsApp.</p>
+            </div>
+
+            <!-- Wizard Card Container -->
+            <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                <!-- Progress Steps Indicator -->
+                <div class="bg-salvia-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between sm:px-10">
+                    <div class="flex items-center gap-2 sm:gap-4 w-full justify-between sm:justify-start">
+                        <!-- Step 1 -->
+                        <div class="flex items-center gap-1.5 sm:gap-2">
+                            <span id="step-badge-1" class="w-7 h-7 rounded-full bg-salvia-600 text-white flex items-center justify-center font-semibold text-xs transition-colors">1</span>
+                            <span class="text-xs font-semibold text-slate-800 hidden sm:inline">Tratamiento</span>
+                        </div>
+                        <div class="h-px bg-slate-200 flex-grow max-w-[40px] hidden sm:block"></div>
+                        <!-- Step 2 -->
+                        <div class="flex items-center gap-1.5 sm:gap-2">
+                            <span id="step-badge-2" class="w-7 h-7 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-semibold text-xs transition-colors">2</span>
+                            <span class="text-xs font-semibold text-slate-400 hidden sm:inline">Fecha y Hora</span>
+                        </div>
+                        <div class="h-px bg-slate-200 flex-grow max-w-[40px] hidden sm:block"></div>
+                        <!-- Step 3 -->
+                        <div class="flex items-center gap-1.5 sm:gap-2">
+                            <span id="step-badge-3" class="w-7 h-7 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-semibold text-xs transition-colors">3</span>
+                            <span class="text-xs font-semibold text-slate-400 hidden sm:inline">Tus Datos</span>
+                        </div>
+                        <div class="h-px bg-slate-200 flex-grow max-w-[40px] hidden sm:block"></div>
+                        <!-- Step 4 -->
+                        <div class="flex items-center gap-1.5 sm:gap-2">
+                            <span id="step-badge-4" class="w-7 h-7 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-semibold text-xs transition-colors">4</span>
+                            <span class="text-xs font-semibold text-slate-400 hidden sm:inline">Confirmación</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-6 sm:p-10">
+                    <!-- Wizard Forms -->
+                    <form id="booking-form" onsubmit="handleBookingSubmit(event)">
+                        
+                        <!-- STEP 1: Service Selection -->
+                        <div id="booking-step-1" class="space-y-6">
+                            <h3 class="font-serif text-xl font-bold text-slate-900 mb-4">¿Qué servicio o consulta necesitas realizarte?</h3>
+                            
+                            <!-- Services radio options -->
+                            <div class="grid sm:grid-cols-2 gap-4">
+                                <label class="relative flex p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-salvia-500">
+                                    <input type="radio" name="booking-service" value="Ortodoncia Invisible" class="sr-only" checked onchange="updateServiceSelection(this.value)">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center shrink-0 radio-indicator bg-white">
+                                            <div class="w-2.5 h-2.5 rounded-full bg-salvia-600 scale-0 transition-transform"></div>
+                                        </div>
+                                        <div>
+                                            <span class="block font-semibold text-sm text-slate-950">Ortodoncia Invisible</span>
+                                            <span class="block text-xs text-slate-400 mt-0.5">Atención Directa Dr. Adrián</span>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="relative flex p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-salvia-500">
+                                    <input type="radio" name="booking-service" value="Diseño de Sonrisa" class="sr-only" onchange="updateServiceSelection(this.value)">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center shrink-0 radio-indicator bg-white">
+                                            <div class="w-2.5 h-2.5 rounded-full bg-salvia-600 scale-0 transition-transform"></div>
+                                        </div>
+                                        <div>
+                                            <span class="block font-semibold text-sm text-slate-950">Diseño de Sonrisa</span>
+                                            <span class="block text-xs text-slate-400 mt-0.5">Atención Directa Dr. Adrián</span>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="relative flex p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-salvia-500">
+                                    <input type="radio" name="booking-service" value="Implantes Dentales" class="sr-only" onchange="updateServiceSelection(this.value)">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center shrink-0 radio-indicator bg-white">
+                                            <div class="w-2.5 h-2.5 rounded-full bg-salvia-600 scale-0 transition-transform"></div>
+                                        </div>
+                                        <div>
+                                            <span class="block font-semibold text-sm text-slate-950">Implantes de Zirconio</span>
+                                            <span class="block text-xs text-slate-400 mt-0.5">Atención Directa Dr. Adrián</span>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="relative flex p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-salvia-500">
+                                    <input type="radio" name="booking-service" value="Blanqueamiento Láser" class="sr-only" onchange="updateServiceSelection(this.value)">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center shrink-0 radio-indicator bg-white">
+                                            <div class="w-2.5 h-2.5 rounded-full bg-salvia-600 scale-0 transition-transform"></div>
+                                        </div>
+                                        <div>
+                                            <span class="block font-semibold text-sm text-slate-950">Blanqueamiento Láser</span>
+                                            <span class="block text-xs text-slate-400 mt-0.5">Atención Directa Dr. Adrián</span>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="relative flex p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-salvia-500">
+                                    <input type="radio" name="booking-service" value="Limpieza Ultrasónica" class="sr-only" onchange="updateServiceSelection(this.value)">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center shrink-0 radio-indicator bg-white">
+                                            <div class="w-2.5 h-2.5 rounded-full bg-salvia-600 scale-0 transition-transform"></div>
+                                        </div>
+                                        <div>
+                                            <span class="block font-semibold text-sm text-slate-950">Limpieza Ultrasónica</span>
+                                            <span class="block text-xs text-slate-400 mt-0.5">Profilaxis con Dr. Adrián</span>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="relative flex p-4 rounded-2xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-salvia-500">
+                                    <input type="radio" name="booking-service" value="Valoración Inicial General" class="sr-only" onchange="updateServiceSelection(this.value)">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center shrink-0 radio-indicator bg-white">
+                                            <div class="w-2.5 h-2.5 rounded-full bg-salvia-600 scale-0 transition-transform"></div>
+                                        </div>
+                                        <div>
+                                            <span class="block font-semibold text-sm text-slate-950">Valoración Inicial General</span>
+                                            <span class="block text-xs text-slate-400 mt-0.5">Análisis de Diagnóstico Completo</span>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="pt-6 flex justify-end">
+                                <button type="button" onclick="goToStep(2)" class="px-6 py-3 rounded-xl bg-salvia-600 hover:bg-salvia-700 text-white font-semibold transition-all flex items-center gap-2">
+                                    Siguiente paso <i class="fa-solid fa-chevron-right text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 2: Interactive Calendar & Slot Picker -->
+                        <div id="booking-step-2" class="space-y-6 hidden">
+                            <h3 class="font-serif text-xl font-bold text-slate-900 mb-2">Selecciona la Fecha y Hora de tu Consulta</h3>
+                            <p class="text-xs text-slate-500 mb-4"><i class="fa-solid fa-clock text-salvia-600 mr-1"></i> Zona Horaria: Local (GMT-6). Sincronizado en tiempo real.</p>
+
+                            <div class="grid md:grid-cols-12 gap-8 items-start">
+                                <!-- Calendar Wrapper -->
+                                <div class="md:col-span-7 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <button type="button" onclick="prevMonth()" class="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm text-slate-700 hover:bg-slate-100 transition-colors"><i class="fa-solid fa-chevron-left text-xs"></i></button>
+                                        <span id="calendar-title" class="font-semibold text-sm text-slate-900">Junio 2026</span>
+                                        <button type="button" onclick="nextMonth()" class="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm text-slate-700 hover:bg-slate-100 transition-colors"><i class="fa-solid fa-chevron-right text-xs"></i></button>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500 mb-2">
+                                        <div>Do</div><div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sá</div>
+                                    </div>
+                                    <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-xs font-medium">
+                                        <!-- Days dynamically rendered -->
+                                    </div>
+                                </div>
+
+                                <!-- Time Slots Wrapper -->
+                                <div class="md:col-span-5 space-y-4">
+                                    <h4 class="font-semibold text-sm text-slate-900">Horarios Libres para el <span id="selected-date-label" class="text-salvia-700">Seleccione un día</span></h4>
+                                    
+                                    <div id="slots-container" class="grid grid-cols-2 gap-2 max-h-[220px] overflow-y-auto pr-1">
+                                        <!-- Time slots rendered dynamically -->
+                                        <div class="col-span-2 text-center text-xs text-slate-400 py-8">
+                                            Por favor seleccione un día válido en el calendario para ver los horarios.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-6 border-t border-slate-100 flex justify-between">
+                                <button type="button" onclick="goToStep(1)" class="px-5 py-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold transition-all flex items-center gap-2">
+                                    <i class="fa-solid fa-chevron-left text-xs"></i> Anterior
+                                </button>
+                                <button type="button" onclick="verifyAndGoToStep(3)" class="px-6 py-3 rounded-xl bg-salvia-600 hover:bg-salvia-700 text-white font-semibold transition-all flex items-center gap-2">
+                                    Siguiente paso <i class="fa-solid fa-chevron-right text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 3: Patient Personal Information -->
+                        <div id="booking-step-3" class="space-y-6 hidden">
+                            <h3 class="font-serif text-xl font-bold text-slate-900 mb-2">Completa tu información de contacto</h3>
+                            <p class="text-xs text-slate-400">Usaremos estos datos para confirmar tu cita de forma inmediata y enviarte las indicaciones correspondientes.</p>
+
+                            <div class="grid sm:grid-cols-2 gap-6 pt-4">
+                                <div class="space-y-2">
+                                    <label for="p-name" class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Nombre Completo *</label>
+                                    <input type="text" id="p-name" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-salvia-500/50 focus:border-salvia-500 text-sm transition-all" placeholder="Juan Pérez">
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label for="p-phone" class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Teléfono de WhatsApp *</label>
+                                    <input type="tel" id="p-phone" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-salvia-500/50 focus:border-salvia-500 text-sm transition-all" placeholder="+52 1 55 1234 5678">
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label for="p-email" class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Correo Electrónico *</label>
+                                    <input type="email" id="p-email" required class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-salvia-500/50 focus:border-salvia-500 text-sm transition-all" placeholder="juan@ejemplo.com">
+                                </div>
+
+                                <div class="space-y-2">
+                                    <label for="p-notes" class="block text-xs font-bold text-slate-700 uppercase tracking-wide">¿Algún síntoma o nota especial?</label>
+                                    <input type="text" id="p-notes" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-salvia-500/50 focus:border-salvia-500 text-sm transition-all" placeholder="Ej. Sensibilidad al frío, primera valoración">
+                                </div>
+                            </div>
+
+                            <div class="pt-6 border-t border-slate-100 flex justify-between">
+                                <button type="button" onclick="goToStep(2)" class="px-5 py-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold transition-all flex items-center gap-2">
+                                    <i class="fa-solid fa-chevron-left text-xs"></i> Anterior
+                                </button>
+                                <button type="submit" class="px-6 py-3 rounded-xl bg-salvia-600 hover:bg-salvia-700 text-white font-semibold transition-all flex items-center gap-2 shadow-lg shadow-salvia-100">
+                                    Confirmar y Agendar <i class="fa-solid fa-check text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- STEP 4: Success Screen -->
+                        <div id="booking-step-4" class="text-center space-y-6 py-8 hidden">
+                            <div class="w-20 h-20 rounded-full bg-salvia-100 text-salvia-700 mx-auto flex items-center justify-center text-3xl animate-bounce">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <div class="space-y-2">
+                                <h3 class="font-serif text-2xl sm:text-3xl font-bold text-slate-900">¡Tu consulta ha sido procesada!</h3>
+                                <p class="text-slate-600 max-w-md mx-auto text-sm sm:text-base">Hemos registrado tu reserva en el sistema de la clínica. Recibirás confirmación directa por correo y WhatsApp en unos instantes.</p>
+                            </div>
+                            
+                            <!-- Appointment Details Receipt -->
+                            <div class="max-w-md mx-auto p-6 rounded-2xl bg-slate-50 border border-slate-100 text-left space-y-3 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-400">Tratamiento:</span> <strong id="rec-service" class="text-slate-900">Ortodoncia Invisible</strong></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Doctor a Cargo:</span> <strong class="text-slate-900">Dr. Adrián Méndez</strong></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Fecha y Hora:</span> <strong id="rec-datetime" class="text-slate-900">12 de Junio, 10:30 AM</strong></div>
+                                <div class="flex justify-between"><span class="text-slate-400">Paciente:</span> <strong id="rec-name" class="text-slate-900">Juan Pérez</strong></div>
+                            </div>
+
+                            <div class="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+                                <button type="button" onclick="resetBookingEngine()" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-all">
+                                    Agendar otra consulta
+                                </button>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section id="testimonios" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16 space-y-4">
+                <span class="text-salvia-600 font-semibold text-sm uppercase tracking-wider">Testimonios Reales</span>
+                <h2 class="font-serif text-3xl sm:text-4xl font-bold text-slate-900">Opiniones de pacientes felices</h2>
+                <p class="text-slate-500 text-sm sm:text-base">La mejor publicidad es la recomendación de quienes ya confiaron en el tratamiento clínico del Dr. Adrián Méndez.</p>
+            </div>
+
+            <!-- Testimonials Grid -->
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Testimonial 1 -->
+                <div class="bg-slate-50 p-8 rounded-3xl border border-slate-100 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex text-amber-400 gap-1">
+                            <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                        </div>
+                        <p class="text-slate-600 text-sm leading-relaxed">"Excelente trato del Dr. Adrián Méndez. Me encanta que me atienda él personalmente en cada cita de mi tratamiento de alineadores. Además, el sistema de confirmaciones automáticas por WhatsApp te facilita la vida."</p>
+                    </div>
+                    <div class="flex items-center gap-3 mt-8 pt-4 border-t border-slate-200/50">
+                        <div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
+                            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100" alt="Laura González" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-sm">Laura González</h4>
+                            <p class="text-xs text-slate-400">Tratamiento de Alineadores</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Testimonial 2 -->
+                <div class="bg-slate-50 p-8 rounded-3xl border border-slate-100 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex text-amber-400 gap-1">
+                            <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                        </div>
+                        <p class="text-slate-600 text-sm leading-relaxed">"Le tenía pánico al dentista. El Dr. Adrián se tomó el tiempo para explicarme todo y me colocó un implante de zirconio. De verdad, no sentí absolutamente nada de dolor. Es un profesional excelente."</p>
+                    </div>
+                    <div class="flex items-center gap-3 mt-8 pt-4 border-t border-slate-200/50">
+                        <div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=100" alt="Andrés Mendoza" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-sm">Andrés Mendoza</h4>
+                            <p class="text-xs text-slate-400">Implante de Zirconio</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Testimonial 3 -->
+                <div class="bg-slate-50 p-8 rounded-3xl border border-slate-100 flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex text-amber-400 gap-1">
+                            <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
+                        </div>
+                        <p class="text-slate-600 text-sm leading-relaxed">"Me hice el blanqueamiento con el Dr. Adrián antes de mi graduación y el resultado fue súper estético. Todo el proceso de agendamiento y confirmaciones fue sumamente rápido gracias a su sistema."</p>
+                    </div>
+                    <div class="flex items-center gap-3 mt-8 pt-4 border-t border-slate-200/50">
+                        <div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden shrink-0">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=100" alt="Fernanda Ruiz" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-900 text-sm">Fernanda Ruiz</h4>
+                            <p class="text-xs text-slate-400">Blanqueamiento Dental</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="py-24 bg-slate-50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16 space-y-4">
+                <span class="text-salvia-600 font-semibold text-sm uppercase tracking-wider">Preguntas Frecuentes</span>
+                <h2 class="font-serif text-3xl sm:text-4xl font-bold text-slate-900">Despeja tus dudas clínicas</h2>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Accordion Item 1 -->
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden transition-all duration-300 shadow-sm">
+                    <button onclick="toggleFaq(1)" class="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none">
+                        <span class="font-semibold text-slate-950 text-sm sm:text-base">¿La primera consulta de valoración tiene costo?</span>
+                        <i id="faq-icon-1" class="fa-solid fa-chevron-down text-slate-400 text-sm transition-transform duration-300"></i>
+                    </button>
+                    <div id="faq-content-1" class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
+                        <div class="px-6 pb-5 text-slate-500 text-sm border-t border-slate-50 pt-3">
+                            No, la valoración inicial para diagnóstico integral es de cortesía si agendas directamente a través de esta landing page. Incluye exploración y plan a la medida.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accordion Item 2 -->
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden transition-all duration-300 shadow-sm">
+                    <button onclick="toggleFaq(2)" class="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none">
+                        <span class="font-semibold text-slate-950 text-sm sm:text-base">¿Cómo funciona la sincronización de mi cita?</span>
+                        <i id="faq-icon-2" class="fa-solid fa-chevron-down text-slate-400 text-sm transition-transform duration-300"></i>
+                    </button>
+                    <div id="faq-content-2" class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
+                        <div class="px-6 pb-5 text-slate-500 text-sm border-t border-slate-50 pt-3">
+                            Nuestra plataforma está conectada de forma directa con los calendarios de la clínica. Una vez que confirmas tu reserva, el sistema bloquea el horario al instante y genera alertas automáticas para recordarte el día de tu consulta médica.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Accordion Item 3 -->
+                <div class="bg-white rounded-2xl border border-slate-100 overflow-hidden transition-all duration-300 shadow-sm">
+                    <button onclick="toggleFaq(3)" class="w-full px-6 py-5 flex items-center justify-between text-left focus:outline-none">
+                        <span class="font-semibold text-slate-950 text-sm sm:text-base">¿Qué facilidades de pago ofrecen?</span>
+                        <i id="faq-icon-3" class="fa-solid fa-chevron-down text-slate-400 text-sm transition-transform duration-300"></i>
+                    </button>
+                    <div id="faq-content-3" class="max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
+                        <div class="px-6 pb-5 text-slate-500 text-sm border-t border-slate-50 pt-3">
+                            Aceptamos tarjetas de débito/crédito, transferencias bancarias y efectivo. Contamos con financiamiento a meses sin intereses para ortodoncia y diseño de sonrisa con tarjetas seleccionadas.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer Section -->
+    <footer class="bg-slate-950 text-slate-400 pt-16 pb-8 border-t border-slate-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                <!-- Branding -->
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-10 h-10 rounded-xl bg-salvia-600 flex items-center justify-center text-white">
+                            <i class="fa-solid fa-tooth text-lg"></i>
+                        </div>
+                        <div class="flex flex-col text-left">
+                            <span class="font-serif text-lg font-bold tracking-tight text-white leading-tight">Dr. Adrián Méndez</span>
+                            <span class="text-[9px] text-salvia-500 font-semibold tracking-wider uppercase">Odontología Boutique</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed">Consultorio privado del Dr. Adrián Méndez. Salud, estética y armonía bucal mediante tratamientos de mínima invasión y tecnología digital avanzada.</p>
+                </div>
+
+                <!-- Clinic Hours -->
+                <div class="space-y-4 text-xs">
+                    <h4 class="text-white font-semibold text-sm uppercase tracking-wider">Horario de Atención</h4>
+                    <p>Lunes a Viernes:<br><strong class="text-white">9:00 AM - 7:00 PM</strong></p>
+                    <p>Sábados:<br><strong class="text-white">9:00 AM - 2:00 PM</strong></p>
+                    <p class="text-salvia-500 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> Domingos Cerrado</p>
+                </div>
+
+                <!-- Contact details -->
+                <div class="space-y-4 text-xs">
+                    <h4 class="text-white font-semibold text-sm uppercase tracking-wider">Contacto & Ubicación</h4>
+                    <p><i class="fa-solid fa-map-pin mr-2 text-salvia-500"></i> Av. de la Salud 1204, Consultorio 301, San Pedro Garza García, NL.</p>
+                    <p><i class="fa-solid fa-phone mr-2 text-salvia-500"></i> +52 (81) 8400-9900</p>
+                    <p><i class="fa-solid fa-envelope mr-2 text-salvia-500"></i> hola@dradrianmendez.com</p>
+                </div>
+
+                <!-- Urgent Attention -->
+                <div class="space-y-4">
+                    <h4 class="text-white font-semibold text-sm uppercase tracking-wider">Atención de Urgencia</h4>
+                    <p class="text-xs text-slate-400">¿Dolor dental agudo? Agenda de inmediato o contacta al canal prioritario para recibir instrucciones.</p>
+                    <a href="https://wa.me/5215512345678" target="_blank" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs transition-colors w-full">
+                        <i class="fa-brands fa-whatsapp text-sm"></i> WhatsApp Urgencias 24/7
+                    </a>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-900 pt-8 text-center text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p>&copy; 2026 Dr. Adrián Méndez. Todos los derechos reservados.</p>
+                <div class="flex gap-4">
+                    <a href="#" class="hover:text-white transition-colors">Aviso de Privacidad</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- AI Smart Dental Assistant Widget -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <!-- AI Trigger Button -->
+        <button id="ai-chat-btn" onclick="toggleAiChat()" class="w-14 h-14 rounded-full bg-salvia-600 hover:bg-salvia-700 text-white flex items-center justify-center shadow-xl shadow-salvia-200/50 hover:shadow-2xl hover:shadow-salvia-300 transition-all transform hover:-translate-y-1 relative active:scale-95">
+            <span class="absolute -top-1 -right-1 flex h-4 w-4">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 text-[9px] font-bold text-white flex items-center justify-center">AI</span>
+            </span>
+            <i class="fa-solid fa-user-doctor text-xl"></i>
+        </button>
+
+        <!-- AI Assistant Chat Box -->
+        <div id="ai-chat-box" class="absolute bottom-16 right-0 w-[350px] sm:w-[400px] h-[500px] bg-white rounded-3xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden transition-all duration-300 scale-0 origin-bottom-right pointer-events-none opacity-0">
+            <!-- Box Header -->
+            <div class="bg-salvia-600 px-5 py-4 text-white flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-lg">
+                        <i class="fa-solid fa-sparkles animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-sm">Asistente del Dr. Adrián</h4>
+                        <p class="text-[10px] text-salvia-100 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Sincronizado en línea
+                        </p>
+                    </div>
+                </div>
+                <button onclick="toggleAiChat()" class="text-white/80 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Chat message area -->
+            <div id="ai-chat-messages" class="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-50 text-sm">
+                <!-- Initial Welcome message -->
+                <div class="flex gap-2 items-start max-w-[85%]">
+                    <div class="w-7 h-7 rounded-full bg-salvia-100 text-salvia-700 flex items-center justify-center text-xs shrink-0 mt-0.5">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <div class="bg-white p-3 rounded-2xl border border-slate-200/50 shadow-sm text-xs leading-relaxed text-slate-800">
+                        ¡Hola! Soy Camila, asistente virtual del <strong>Dr. Adrián Méndez</strong>. 🦷 ¿En qué te puedo asesorar hoy?
+                        <br><br>
+                        Puedo informarte sobre:
+                        <ul class="list-disc pl-4 mt-2 space-y-1">
+                            <li>Precios de carillas, implantes y alineadores</li>
+                            <li>Tiempos de tratamiento</li>
+                            <li>Qué hacer ante un dolor agudo</li>
+                            <li>Cómo funciona nuestra agenda inteligente</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Form -->
+            <div class="p-3 border-t border-slate-100 bg-white flex gap-2">
+                <input type="text" id="ai-chat-input" onkeydown="handleAiChatKeydown(event)" class="flex-grow px-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-salvia-500 focus:border-salvia-500" placeholder="Escribe tu consulta aquí...">
+                <button onclick="sendAiMessage()" id="ai-chat-send-btn" class="w-10 h-10 rounded-xl bg-salvia-600 hover:bg-salvia-700 text-white flex items-center justify-center transition-colors shrink-0">
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed top-24 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // Global in-memory state representing dynamic clinic operations
+        const state = {
+            currentStep: 1,
+            selectedService: "Ortodoncia Invisible",
+            selectedDate: null, // Date Object
+            selectedTime: null, // string (ex. "10:30 AM")
+            
+            // Webhook Configuration (Read silently from localStorage behind the scenes)
+            clinicWebhookUrl: localStorage.getItem('clinic_webhook_url') || '',
+            
+            // Initial Seed Appointments
+            appointments: [
+                {
+                    id: 101,
+                    patientName: "Héctor Valenzuela",
+                    patientPhone: "+52 55 4900 1102",
+                    patientEmail: "hector@valenzuela.org",
+                    service: "Implantes Dentales",
+                    date: "2026-06-15",
+                    time: "11:00 AM",
+                    price: 800,
+                    notes: "Segunda sesión de perno.",
+                    status: "Confirmado"
+                },
+                {
+                    id: 102,
+                    patientName: "Ana Isabel Castro",
+                    patientPhone: "+52 55 9011 2234",
+                    patientEmail: "ana.castro@gmail.com",
+                    service: "Limpieza Ultrasónica",
+                    date: "2026-06-18",
+                    time: "04:30 PM",
+                    price: 60,
+                    notes: "Profilaxis general preventiva.",
+                    status: "Pendiente"
+                }
+            ],
+            
+            // Map services to standard pricing
+            serviceRegistry: {
+                "Ortodoncia Invisible": { price: 1200 },
+                "Diseño de Sonrisa": { price: 1500 },
+                "Implantes Dentales": { price: 800 },
+                "Blanqueamiento Láser": { price: 250 },
+                "Limpieza Ultrasónica": { price: 60 },
+                "Valoración Inicial General": { price: 0 }
+            },
+            
+            // Calendar tracking
+            calendarYear: 2026,
+            calendarMonth: 5 // June (0-based)
+        };
+
+        // Month Names translation
+        const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+        window.onload = function() {
+            // Setup the initial calendar display
+            const today = new Date();
+            state.calendarYear = today.getFullYear();
+            state.calendarMonth = today.getMonth();
+            renderCalendar();
+            
+            // Sync radio indicators to styling
+            updateServiceRadioStyles();
+        };
+
+        function showToast(title, msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `p-4 rounded-2xl shadow-xl flex gap-3 max-w-sm border backdrop-blur-md transition-all duration-300 transform translate-x-12 opacity-0 pointer-events-auto ${
+                type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800'
+            }`;
+            
+            toast.innerHTML = `
+                <div class="text-xl shrink-0">
+                    <i class="fa-solid ${type === 'success' ? 'fa-circle-check text-emerald-600' : 'fa-circle-exclamation text-red-600'}"></i>
+                </div>
+                <div>
+                    <h5 class="font-bold text-xs uppercase tracking-wide">${title}</h5>
+                    <p class="text-xs text-slate-600 mt-1">${msg}</p>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-x-12', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-12', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // Function to dispatch real webhook payloads silently in background (n8n compatible)
+        async function dispatchWebhookToN8n(payload) {
+            if (!state.clinicWebhookUrl) {
+                // Silently skip if no webhook is defined in localstorage or code
+                return false;
+            }
+            
+            const maxRetries = 2;
+            let attempt = 0;
+            let success = false;
+            
+            while (attempt <= maxRetries && !success) {
+                try {
+                    const response = await fetch(state.clinicWebhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (response.ok) {
+                        success = true;
+                    } else {
+                        attempt++;
+                        if (attempt <= maxRetries) {
+                            const delay = Math.pow(2, attempt) * 1000;
+                            await new Promise(r => setTimeout(r, delay));
+                        }
+                    }
+                } catch (err) {
+                    attempt++;
+                    if (attempt <= maxRetries) {
+                        const delay = Math.pow(2, attempt) * 1000;
+                        await new Promise(r => setTimeout(r, delay));
+                    }
+                }
+            }
+            return success;
+        }
+
+        function goToStep(stepNum) {
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById(`booking-step-${i}`);
+                if (el) {
+                    if (i === stepNum) {
+                        el.classList.remove('hidden');
+                    } else {
+                        el.classList.add('hidden');
+                    }
+                }
+            }
+            state.currentStep = stepNum;
+            updateStepIndicatorUI();
+        }
+
+        function updateStepIndicatorUI() {
+            for (let i = 1; i <= 4; i++) {
+                const badge = document.getElementById(`step-badge-${i}`);
+                if (badge) {
+                    if (i < state.currentStep) {
+                        badge.className = "w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center font-semibold text-xs transition-colors";
+                        badge.innerHTML = `<i class="fa-solid fa-check text-[10px]"></i>`;
+                    } else if (i === state.currentStep) {
+                        badge.className = "w-7 h-7 rounded-full bg-salvia-600 text-white flex items-center justify-center font-semibold text-xs transition-colors";
+                        badge.innerHTML = `${i}`;
+                    } else {
+                        badge.className = "w-7 h-7 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-semibold text-xs transition-colors";
+                        badge.innerHTML = `${i}`;
+                    }
+                }
+            }
+        }
+
+        function preSelectService(serviceName) {
+            state.selectedService = serviceName;
+            
+            const radio = document.querySelector(`input[name="booking-service"][value="${serviceName}"]`);
+            if (radio) {
+                radio.checked = true;
+            }
+            updateServiceRadioStyles();
+            
+            const target = document.getElementById('agenda-seccion');
+            target.scrollIntoView({ behavior: 'smooth' });
+            
+            showToast("Tratamiento Seleccionado", `Has seleccionado: ${serviceName}. Elige la fecha.`);
+            goToStep(2);
+        }
+
+        function updateServiceSelection(value) {
+            state.selectedService = value;
+            updateServiceRadioStyles();
+        }
+
+        function updateServiceRadioStyles() {
+            const radios = document.querySelectorAll('input[name="booking-service"]');
+            radios.forEach(radio => {
+                const parentLabel = radio.closest('label');
+                const checkDot = parentLabel.querySelector('.radio-indicator div');
+                const indicator = parentLabel.querySelector('.radio-indicator');
+                
+                if (radio.checked) {
+                    parentLabel.className = "relative flex p-4 rounded-2xl border-2 border-salvia-500 bg-salvia-50/40 cursor-pointer transition-all";
+                    checkDot.className = "w-2.5 h-2.5 rounded-full bg-salvia-600 scale-100 transition-transform";
+                    indicator.className = "w-5 h-5 rounded-full border-2 border-salvia-600 flex items-center justify-center shrink-0 radio-indicator bg-white";
+                } else {
+                    parentLabel.className = "relative flex p-4 rounded-2xl border border-slate-200 hover:bg-slate-50/50 cursor-pointer transition-all";
+                    checkDot.className = "w-2.5 h-2.5 rounded-full bg-salvia-600 scale-0 transition-transform";
+                    indicator.className = "w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center shrink-0 radio-indicator bg-white";
+                }
+            });
+        }
+
+        function renderCalendar() {
+            const titleEl = document.getElementById('calendar-title');
+            const daysEl = document.getElementById('calendar-days');
+            
+            titleEl.textContent = `${monthNames[state.calendarMonth]} ${state.calendarYear}`;
+            daysEl.innerHTML = "";
+            
+            const firstDay = new Date(state.calendarYear, state.calendarMonth, 1);
+            const startingDayOfWeek = firstDay.getDay(); 
+            const totalDays = new Date(state.calendarYear, state.calendarMonth + 1, 0).getDate();
+            
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                const blank = document.createElement('div');
+                blank.className = "py-3 text-transparent pointer-events-none";
+                blank.textContent = "-";
+                daysEl.appendChild(blank);
+            }
+            
+            const today = new Date();
+            
+            for (let day = 1; day <= totalDays; day++) {
+                const currentDayObj = new Date(state.calendarYear, state.calendarMonth, day);
+                const isSunday = currentDayObj.getDay() === 0;
+                const isPast = currentDayObj < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                
+                const btn = document.createElement('button');
+                btn.type = "button";
+                btn.className = "py-3 rounded-xl transition-all font-medium flex items-center justify-center relative";
+                btn.textContent = day;
+                
+                if (isSunday) {
+                    btn.className += " text-slate-300 cursor-not-allowed";
+                    btn.title = "Consultorio Cerrado los Domingos";
+                    btn.disabled = true;
+                } else if (isPast) {
+                    btn.className += " text-slate-300 cursor-not-allowed line-through";
+                    btn.disabled = true;
+                } else {
+                    const isSelected = state.selectedDate && 
+                        state.selectedDate.getDate() === day && 
+                        state.selectedDate.getMonth() === state.calendarMonth && 
+                        state.selectedDate.getFullYear() === state.calendarYear;
+                    
+                    if (isSelected) {
+                        btn.className += " bg-salvia-600 text-white shadow-lg shadow-salvia-200/50 scale-105 font-bold";
+                    } else {
+                        btn.className += " hover:bg-salvia-100/50 text-slate-800";
+                        const dot = document.createElement('span');
+                        dot.className = "absolute bottom-1 w-1 h-1 rounded-full bg-emerald-400";
+                        btn.appendChild(dot);
+                    }
+                    
+                    btn.onclick = () => selectCalendarDate(currentDayObj);
+                }
+                
+                daysEl.appendChild(btn);
+            }
+        }
+
+        function prevMonth() {
+            state.calendarMonth--;
+            if (state.calendarMonth < 0) {
+                state.calendarMonth = 11;
+                state.calendarYear--;
+            }
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            state.calendarMonth++;
+            if (state.calendarMonth > 11) {
+                state.calendarMonth = 0;
+                state.calendarYear++;
+            }
+            renderCalendar();
+        }
+
+        function selectCalendarDate(dateObj) {
+            state.selectedDate = dateObj;
+            state.selectedTime = null; 
+            
+            const daysLabel = document.getElementById('selected-date-label');
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            daysLabel.textContent = dateObj.toLocaleDateString('es-ES', options);
+            
+            renderCalendar();
+            renderAvailableTimeSlots();
+        }
+
+        function renderAvailableTimeSlots() {
+            const container = document.getElementById('slots-container');
+            container.innerHTML = "";
+            
+            const allSlots = [
+                "09:00 AM", "09:30 AM", "10:30 AM", "11:00 AM", 
+                "12:00 PM", "03:00 PM", "03:30 PM", "04:30 PM", 
+                "05:30 PM", "06:00 PM"
+            ];
+            
+            const dateStr = state.selectedDate.toISOString().split('T')[0];
+            const activeBookingsOnDate = state.appointments.filter(app => app.date === dateStr);
+            const bookedTimes = activeBookingsOnDate.map(app => app.time);
+            
+            const availableSlots = allSlots.filter(slot => !bookedTimes.includes(slot));
+            
+            if (availableSlots.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 text-center text-xs text-red-500 py-6 font-semibold">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> No hay horarios libres. Elige otro día.
+                    </div>
+                `;
+                return;
+            }
+            
+            availableSlots.forEach(slot => {
+                const btn = document.createElement('button');
+                btn.type = "button";
+                
+                const isSelected = state.selectedTime === slot;
+                
+                if (isSelected) {
+                    btn.className = "py-3 px-4 rounded-xl text-xs font-semibold bg-slate-900 text-white shadow-md border-slate-900 transition-all";
+                } else {
+                    btn.className = "py-3 px-4 rounded-xl text-xs font-medium bg-slate-100 hover:bg-salvia-100 hover:text-salvia-800 border border-transparent hover:border-salvia-200 text-slate-700 transition-all";
+                }
+                
+                btn.textContent = slot;
+                btn.onclick = () => selectTimeSlot(slot);
+                container.appendChild(btn);
+            });
+        }
+
+        function selectTimeSlot(slot) {
+            state.selectedTime = slot;
+            renderAvailableTimeSlots();
+        }
+
+        function verifyAndGoToStep(targetStep) {
+            if (!state.selectedDate) {
+                showToast("Día Requerido", "Por favor selecciona un día del calendario.", "error");
+                return;
+            }
+            if (!state.selectedTime) {
+                showToast("Horario Requerido", "Por favor selecciona una hora de consulta.", "error");
+                return;
+            }
+            goToStep(targetStep);
+        }
+
+        async function handleBookingSubmit(event) {
+            event.preventDefault();
+            
+            const pName = document.getElementById('p-name').value;
+            const pPhone = document.getElementById('p-phone').value;
+            const pEmail = document.getElementById('p-email').value;
+            const pNotes = document.getElementById('p-notes').value;
+            
+            const dateStr = state.selectedDate.toISOString().split('T')[0];
+            const mappedServiceMeta = state.serviceRegistry[state.selectedService];
+            
+            const newAppointment = {
+                id: Math.floor(Math.random() * 1000) + 200,
+                event: "appointment.booked",
+                patientName: pName,
+                patientPhone: pPhone,
+                patientEmail: pEmail,
+                service: state.selectedService,
+                dentist: "Dr. Adrián Méndez",
+                date: dateStr,
+                time: state.selectedTime,
+                price: mappedServiceMeta.price,
+                notes: pNotes || "Sin observaciones.",
+                status: "Pendiente",
+                timestamp: new Date().toISOString()
+            };
+            
+            // Save inside local memory registry
+            state.appointments.unshift(newAppointment);
+            
+            // Render receipt screen details
+            document.getElementById('rec-service').textContent = state.selectedService;
+            const formattedDateOptions = { day: 'numeric', month: 'long' };
+            const formattedDate = state.selectedDate.toLocaleDateString('es-ES', formattedDateOptions);
+            document.getElementById('rec-datetime').textContent = `${formattedDate}, ${state.selectedTime}`;
+            document.getElementById('rec-name').textContent = pName;
+            
+            // Dispatch Webhook directly to background server silently (for n8n triggers)
+            await dispatchWebhookToN8n(newAppointment);
+            
+            goToStep(4);
+        }
+
+        function resetBookingEngine() {
+            document.getElementById('booking-form').reset();
+            state.selectedDate = null;
+            state.selectedTime = null;
+            
+            document.getElementById('selected-date-label').textContent = "Seleccione un día";
+            document.getElementById('slots-container').innerHTML = `
+                <div class="col-span-2 text-center text-xs text-slate-400 py-8">
+                    Por favor seleccione un día válido en el calendario para ver los horarios.
+                </div>
+            `;
+            
+            renderCalendar();
+            goToStep(1);
+        }
+
+        function toggleFaq(num) {
+            const content = document.getElementById(`faq-content-${num}`);
+            const icon = document.getElementById(`faq-icon-${num}`);
+            
+            if (content.style.maxHeight && content.style.maxHeight !== "0px") {
+                content.style.maxHeight = "0px";
+                icon.className = "fa-solid fa-chevron-down text-slate-400 text-sm transition-transform duration-300";
+            } else {
+                content.style.maxHeight = content.scrollHeight + "px";
+                icon.className = "fa-solid fa-chevron-up text-salvia-600 text-sm transition-transform duration-300";
+            }
+        }
+
+        function toggleAiChat() {
+            const box = document.getElementById('ai-chat-box');
+            if (box.classList.contains('scale-0')) {
+                box.classList.remove('scale-0', 'pointer-events-none', 'opacity-0');
+                box.classList.add('scale-100', 'pointer-events-auto', 'opacity-100');
+            } else {
+                box.classList.add('scale-0', 'pointer-events-none', 'opacity-0');
+                box.classList.remove('scale-100', 'pointer-events-auto', 'opacity-100');
+            }
+        }
+
+        async function sendAiMessage() {
+            const input = document.getElementById('ai-chat-input');
+            const query = input.value.trim();
+            if (!query) return;
+            
+            input.value = "";
+            appendChatMessage("usuario", query);
+            
+            const loadingId = appendChatLoadingBubble();
+            
+            const systemPrompt = `Actúas como Camila, la asistente virtual y secretaria ejecutiva del Dr. Adrián Méndez.
+            El Dr. Adrián Méndez es el único especialista del consultorio boutique, experto en Ortodoncia Invisible, Diseño de Sonrisa y Cirugía Estética Dental.
+            
+            Usa un tono sumamente empático, cálido, cortés, clínico y organizado.
+            Información del Consultorio Privado para guiar tus respuestas:
+            - Único Doctor: Dr. Adrián Méndez (Ortodoncista y Maestro en Estética Dental por NYU College of Dentistry).
+            - Cédula Profesional: 8493102.
+            - Tratamientos Destacados:
+                * Ortodoncia Invisible (Alineadores transparentes) desde $1,200.
+                * Diseño de Sonrisa (Carillas Cerámicas ultrafinas) desde $1,500.
+                * Implantes Dentales de Zirconio biocompatibles desde $800.
+                * Blanqueamiento Láser Frío $250.
+                * Limpieza Ultrasónica Profiláctica $60.
+                * Valoración Inicial: GRATUITA si agendan por la página hoy mismo.
+            - Ubicación: Av. de la Salud 1204, Consultorio 301, San Pedro Garza García, NL.
+            - Horarios: Lun-Vie 9:00 AM a 7:00 PM y Sábados de 9:00 AM a 2:00 PM.
+            - Agenda Inteligente: Menciona sutilmente que contamos con flujos automáticos y sincronización directa con la agenda del doctor en tiempo real, por lo que nunca hay tiempos de espera ni traslapes de citas.
+            
+            Reglas de respuesta:
+            1. Respuestas de máximo 2 párrafos claros para lectura ágil en móviles.
+            2. Si el usuario refiere dolor severo o de muelas agudo, recomiéndale contactar al botón de WhatsApp prioritario de urgencias para atención 24/7.
+            3. Si quieren una cita, invítales a usar el formulario interactivo ("Agenda tu Consulta en un Minuto") ubicado en la sección de agenda de la página.`;
+
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: query }] }],
+                        systemInstruction: {
+                            parts: [{ text: systemPrompt }]
+                        }
+                    })
+                });
+                
+                const result = await response.json();
+                removeChatLoadingBubble(loadingId);
+                
+                const candidate = result.candidates?.[0];
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    const replyText = candidate.content.parts[0].text;
+                    appendChatMessage("asistente", replyText);
+                } else {
+                    appendChatMessage("asistente", "Disculpa, experimenté un ligero error al procesar tu consulta. Escríbenos de forma directa al enlace prioritario de WhatsApp.");
+                }
+                
+            } catch (error) {
+                console.error("AI Error:", error);
+                removeChatLoadingBubble(loadingId);
+                appendChatMessage("asistente", "Lo siento, falló la conexión con mi servidor médico temporalmente. ¿Podrías volver a intentarlo?");
+            }
+        }
+
+        function appendChatMessage(sender, text) {
+            const chatArea = document.getElementById('ai-chat-messages');
+            const bubble = document.createElement('div');
+            
+            if (sender === "usuario") {
+                bubble.className = "flex justify-end gap-2 items-start max-w-[85%] ml-auto";
+                bubble.innerHTML = `
+                    <div class="bg-salvia-100 text-salvia-900 p-3 rounded-2xl border border-salvia-200/40 text-xs shadow-sm">
+                        ${text}
+                    </div>
+                `;
+            } else {
+                bubble.className = "flex gap-2 items-start max-w-[85%]";
+                bubble.innerHTML = `
+                    <div class="w-7 h-7 rounded-full bg-salvia-100 text-salvia-700 flex items-center justify-center text-xs shrink-0 mt-0.5">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <div class="bg-white p-3 rounded-2xl border border-slate-200/50 shadow-sm text-xs leading-relaxed text-slate-800">
+                        ${text.replace(/\n/g, '<br>')}
+                    </div>
+                `;
+            }
+            
+            chatArea.appendChild(bubble);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function appendChatLoadingBubble() {
+            const chatArea = document.getElementById('ai-chat-messages');
+            const id = "loading-" + Date.now();
+            
+            const loadingBubble = document.createElement('div');
+            loadingBubble.id = id;
+            loadingBubble.className = "flex gap-2 items-start max-w-[80%]";
+            loadingBubble.innerHTML = `
+                <div class="w-7 h-7 rounded-full bg-salvia-100 text-salvia-700 flex items-center justify-center text-xs shrink-0 mt-0.5">
+                    <i class="fa-solid fa-user-doctor"></i>
+                </div>
+                <div class="bg-white p-3 rounded-2xl border border-slate-200/50 shadow-sm text-xs flex items-center gap-1.5 text-slate-400">
+                    <i class="fa-solid fa-circle-notch animate-spin text-salvia-600"></i> Camila está escribiendo...
+                </div>
+            `;
+            
+            chatArea.appendChild(loadingBubble);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            return id;
+        }
+
+        function removeChatLoadingBubble(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
+        function handleAiChatKeydown(event) {
+            if (event.key === 'Enter') {
+                sendAiMessage();
+            }
+        }
+    </script>
 </body>
 </html>
