@@ -3,36 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maya Bay - Dashboard de Rendimiento de Turno</title>
+    <title>Jimmy's Grill - Centro de Control Unificado</title>
     <!-- Tailwind CSS for utility styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js for minimalist data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- FontAwesome for clean premium icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts: Inter (Sleek UI) & Playfair Display (Luxury Serif) -->
+    <!-- Google Fonts: Inter (Sleek UI) & Rubik (Bold impact titles) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Rubik:ital,wght@0,500;0,700;1,900&display=swap" rel="stylesheet">
     
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        bay: {
-                            dark: '#050914',      /* Midnight Ocean Background */
-                            card: '#0c1326',      /* Deep Navy Card Background */
-                            border: '#1b253b',    /* Subtle Blue-grey borders */
-                            textMuted: '#94a3b8', /* Classic slate text */
-                            teal: '#38bdf8',      /* Caribbean Water Tone */
-                            gold: '#d4af37',      /* Premium Gold */
-                            fire: '#e07a5f',      /* Fire & Grill Accent */
+                        grill: {
+                            darkest: '#090b11',  /* Black charcoal background */
+                            card: '#131824',     /* Deep steel card background */
+                            border: '#222d42',   /* Dark metallic borders */
+                            orange: '#f97316',   /* Active fire orange */
+                            orangeHover: '#ea580c', /* Intense heat orange */
+                            gold: '#f59e0b',     /* Warm beer amber */
+                            textMuted: '#94a3b8',/* Balanced slate gray */
+                            green: '#10b981',    /* Active/success emerald */
+                            red: '#ef4444'       /* Fire red/warning */
                         }
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
-                        serif: ['Playfair Display', 'serif'],
+                        display: ['Rubik', 'sans-serif'],
                     }
                 }
             }
@@ -40,384 +42,562 @@
     </script>
     <style>
         .premium-shadow {
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
         }
-        .blur-card {
-            background: rgba(12, 19, 38, 0.9);
-            backdrop-filter: blur(8px);
+        .active-glow-orange {
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.2);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090b11;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #222d42;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f97316;
         }
     </style>
 </head>
-<body class="bg-bay-dark text-slate-200 font-sans min-h-screen flex flex-col antialiased selection:bg-bay-gold selection:text-bay-dark">
+<body class="bg-grill-darkest text-slate-200 font-sans min-h-screen flex flex-col antialiased selection:bg-grill-orange selection:text-grill-darkest">
 
-    <!-- Top Navigation / Brand Header -->
-    <header class="border-b border-bay-border/70 bg-bay-dark/95 sticky top-0 z-40 backdrop-blur-md px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <header class="border-b border-grill-border bg-grill-darkest/95 sticky top-0 z-40 backdrop-blur-md px-4 sm:px-8 py-3.5 flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-            <!-- Elegant Brand Emblem -->
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-bay-fire to-bay-gold flex items-center justify-center shadow-lg shadow-bay-fire/10">
-                <i class="fa-solid fa-fire text-bay-dark text-lg"></i>
+            <!-- Brand Fire Emblem -->
+            <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-grill-orange to-grill-gold flex items-center justify-center shadow-lg active-glow-orange">
+                <i class="fa-solid fa-fire-burner text-grill-darkest text-xl"></i>
             </div>
             <div>
-                <h1 class="font-serif text-xl font-bold tracking-wider text-white">MAYA BAY</h1>
-                <p class="text-[10px] text-bay-teal font-semibold tracking-widest uppercase">Cocina de Origen, Fuego & Mar</p>
+                <h1 class="font-display text-2xl font-black tracking-wide text-white flex items-center gap-2">
+                    JIMMY'S GRILL
+                </h1>
+                <p class="text-[10px] text-grill-orange font-bold tracking-widest uppercase">Fuego, Carbón & Sabor Premium</p>
             </div>
         </div>
 
-        <!-- Document Sources & Shift Meta -->
-        <div class="flex items-center gap-2 sm:gap-4 flex-wrap justify-center">
-            <div class="bg-bay-card border border-bay-border rounded-lg px-3 py-1.5 text-xs flex items-center gap-2">
-                <i class="fa-solid fa-file-pdf text-bay-fire"></i>
-                <span class="font-mono text-slate-300">corte_caja_Turno_7422_Empresa_1.pdf</span>
+        <!-- Real-time Connected Sync Indicator -->
+        <div class="flex items-center gap-3 flex-wrap justify-center">
+            <div class="bg-grill-card border border-grill-border rounded-xl px-3.5 py-1.5 text-xs flex items-center gap-2">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-grill-green opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-grill-green"></span>
+                </span>
+                <span class="font-mono text-slate-300 font-medium">Evolution API: Conectado</span>
             </div>
-            <div class="bg-bay-card border border-bay-border rounded-lg px-3 py-1.5 text-xs flex items-center gap-2">
-                <i class="fa-solid fa-file-excel text-emerald-400"></i>
-                <span class="font-mono text-slate-300">productosvendidos_1_7422.xls</span>
-            </div>
-            <div class="bg-bay-gold/10 border border-bay-gold/30 rounded-lg px-3 py-1.5 text-xs text-bay-gold flex items-center gap-1.5 font-semibold">
-                <i class="fa-solid fa-user-check"></i>
-                <span>Cajero: Paola</span>
+            <div class="bg-grill-card border border-grill-border rounded-xl px-3.5 py-1.5 text-xs flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-grill-gold"></i>
+                <span class="text-slate-300">Última Sinc: <strong id="lastSyncLabel" class="font-mono text-white">29 de Mayo, 2026</strong></span>
             </div>
         </div>
     </header>
 
-    <!-- Main Simplified Layout Container -->
+    <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+        <nav class="grid grid-cols-3 gap-2 p-1.5 bg-grill-card border border-grill-border rounded-2xl">
+            <!-- Module Tab 1: Sales & Files -->
+            <button onclick="switchModule('sales')" id="tab-sales" class="flex flex-col sm:flex-row items-center justify-center gap-2.5 py-3 px-2 rounded-xl text-xs sm:text-sm font-bold tracking-wide transition-all bg-grill-orange text-grill-darkest active-glow-orange">
+                <i class="fa-solid fa-chart-line text-base"></i>
+                <span class="text-center">Ventas & Archivos</span>
+            </button>
+            <!-- Module Tab 2: Inventory -->
+            <button onclick="switchModule('inventory')" id="tab-inventory" class="flex flex-col sm:flex-row items-center justify-center gap-2.5 py-3 px-2 rounded-xl text-xs sm:text-sm font-bold tracking-wide text-grill-textMuted hover:text-white transition-all">
+                <i class="fa-solid fa-boxes-stacked text-base"></i>
+                <span class="text-center">Inventario & Recetas</span>
+            </button>
+            <!-- Module Tab 3: WhatsApp Evolution API -->
+            <button onclick="switchModule('whatsapp')" id="tab-whatsapp" class="flex flex-col sm:flex-row items-center justify-center gap-2.5 py-3 px-2 rounded-xl text-xs sm:text-sm font-bold tracking-wide text-grill-textMuted hover:text-white transition-all">
+                <i class="fa-brands fa-whatsapp text-base"></i>
+                <span class="text-center">WhatsApp Evolution</span>
+            </button>
+        </nav>
+    </div>
+
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
-        
-        <!-- SECTION 1: RESUMEN FINANCIERO (Métricas Simplificadas de Caja) -->
-        <section class="space-y-4">
-            <div class="flex items-center justify-between border-b border-bay-border/60 pb-2">
-                <h2 class="text-md font-semibold tracking-wide uppercase text-bay-gold flex items-center gap-2">
-                    <i class="fa-solid fa-receipt text-xs"></i> Balance General del Turno
+
+        <!-- ==================== MODULO 1: VENTAS & ARCHIVOS ==================== -->
+        <section id="module-sales" class="space-y-8">
+            <!-- Sub-Header Metas -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-grill-border/60 pb-3">
+                <h2 class="text-lg font-bold font-display uppercase tracking-wide text-grill-orange flex items-center gap-2">
+                    <i class="fa-solid fa-fire-flame-curved"></i> Resumen de Rendimiento de Turno
                 </h2>
-                <span class="text-xs text-bay-textMuted font-mono">Turno Matutino • 29 de Mayo, 2026</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs bg-grill-card border border-grill-border px-2.5 py-1 rounded-lg text-slate-300">Turno Matutino</span>
+                    <span class="text-xs bg-grill-card border border-grill-border px-2.5 py-1 rounded-lg text-slate-300">Cajera: Paola</span>
+                </div>
             </div>
 
+            <!-- KPI Row -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <!-- KPI 1: Venta Total Bruta -->
-                <div class="bg-bay-card border border-bay-border p-5 rounded-2xl relative overflow-hidden transition-all hover:border-bay-gold/30">
-                    <p class="text-xs text-bay-textMuted font-medium uppercase tracking-wider">Venta Total (Con Imp.)</p>
-                    <h3 class="text-2xl sm:text-3xl font-bold font-mono text-white mt-1">$13,867.50</h3>
-                    <div class="mt-2 flex items-center gap-1 text-[11px] text-emerald-400">
-                        <i class="fa-solid fa-circle-check text-[10px]"></i>
-                        <span>Ingreso Bruto Total</span>
+                <div class="bg-grill-card border border-grill-border p-5 rounded-2xl relative overflow-hidden transition-all hover:border-grill-orange/40">
+                    <p class="text-[10px] text-grill-textMuted font-bold uppercase tracking-wider">Venta Total Bruta</p>
+                    <h3 class="text-xl sm:text-2xl font-bold font-mono text-white mt-1">$13,867.50</h3>
+                    <span class="text-[10px] text-emerald-400 font-mono mt-1 block">✓ Con Impuestos</span>
+                </div>
+                <div class="bg-grill-card border border-grill-border p-5 rounded-2xl relative overflow-hidden transition-all hover:border-grill-orange/40">
+                    <p class="text-[10px] text-grill-textMuted font-bold uppercase tracking-wider">Venta Neta</p>
+                    <h3 class="text-xl sm:text-2xl font-bold font-mono text-grill-gold mt-1">$11,954.74</h3>
+                    <span class="text-[10px] text-grill-textMuted font-mono mt-1 block">Excl. IVA/IEPS</span>
+                </div>
+                <div class="bg-grill-card border border-grill-border p-5 rounded-2xl relative overflow-hidden transition-all hover:border-grill-orange/40">
+                    <p class="text-[10px] text-grill-textMuted font-bold uppercase tracking-wider">Ticket Promedio</p>
+                    <h3 class="text-xl sm:text-2xl font-bold font-mono text-white mt-1">$569.27</h3>
+                    <span class="text-[10px] text-grill-textMuted font-mono mt-1 block">15 Cuentas Cerradas</span>
+                </div>
+                <div class="bg-grill-card border border-grill-border p-5 rounded-2xl relative overflow-hidden transition-all hover:border-grill-orange/40">
+                    <p class="text-[10px] text-grill-textMuted font-bold uppercase tracking-wider">Promedio Comensal</p>
+                    <h3 class="text-xl sm:text-2xl font-bold font-mono text-grill-orange mt-1">$796.98</h3>
+                    <span class="text-[10px] text-grill-textMuted font-mono mt-1 block">21 Clientes Atendidos</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Waiters Performance -->
+                <div class="bg-grill-card border border-grill-border p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-white mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-crown text-grill-gold"></i> Ventas por Mesero
+                        </h4>
+                        <div class="relative h-44 w-full">
+                            <canvas id="waitersChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-grill-border/40 text-[11px] text-grill-textMuted flex justify-between">
+                        <span>Líder de Turno: <strong class="text-white">Joan</strong></span>
+                        <span class="font-bold font-mono text-grill-orange">$8,664.50</span>
                     </div>
                 </div>
 
-                <!-- KPI 2: Venta Neta -->
-                <div class="bg-bay-card border border-bay-border p-5 rounded-2xl relative overflow-hidden transition-all hover:border-bay-gold/30">
-                    <p class="text-xs text-bay-textMuted font-medium uppercase tracking-wider">Venta Neta (Sin Imp.)</p>
-                    <h3 class="text-2xl sm:text-3xl font-bold font-mono text-bay-teal mt-1">$11,954.74</h3>
-                    <div class="mt-2 flex items-center gap-1 text-[11px] text-bay-textMuted">
-                        <span>Impuestos: $1,912.76</span>
+                <!-- Payment Methods -->
+                <div class="bg-grill-card border border-grill-border p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-white mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-wallet text-grill-gold"></i> Distribución de Pagos
+                        </h4>
+                        <div class="relative h-44 w-full">
+                            <canvas id="paymentsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-grill-border/40 text-[10px] space-y-1 text-grill-textMuted">
+                        <div class="flex justify-between"><span>Efectivo:</span><span class="font-bold text-white">$11,394.50</span></div>
+                        <div class="flex justify-between"><span>Tarjetas (Visa):</span><span class="font-bold text-white">$2,328.00</span></div>
                     </div>
                 </div>
 
-                <!-- KPI 3: Ticket Promedio -->
-                <div class="bg-bay-card border border-bay-border p-5 rounded-2xl relative overflow-hidden transition-all hover:border-bay-gold/30">
-                    <p class="text-xs text-bay-textMuted font-medium uppercase tracking-wider">Ticket Promedio</p>
-                    <h3 class="text-2xl sm:text-3xl font-bold font-mono text-white mt-1">$569.27</h3>
-                    <div class="mt-2 flex items-center gap-1 text-[11px] text-bay-textMuted">
-                        <span>Basado en 15 cuentas</span>
+                <!-- Service Distribution -->
+                <div class="bg-grill-card border border-grill-border p-5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-white mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-pizza-slice text-grill-gold"></i> Tipos de Servicio
+                        </h4>
+                        <div class="relative h-44 w-full">
+                            <canvas id="serviceChart"></canvas>
+                        </div>
                     </div>
-                </div>
-
-                <!-- KPI 4: Consumo por Persona -->
-                <div class="bg-bay-card border border-bay-border p-5 rounded-2xl relative overflow-hidden transition-all hover:border-bay-gold/30">
-                    <p class="text-xs text-bay-textMuted font-medium uppercase tracking-wider">Promedio Comensal</p>
-                    <h3 class="text-2xl sm:text-3xl font-bold font-mono text-bay-gold mt-1">$796.98</h3>
-                    <div class="mt-2 flex items-center gap-1 text-[11px] text-bay-textMuted font-mono">
-                        <span>21 comensales registrados</span>
+                    <div class="mt-3 pt-3 border-t border-grill-border/40 text-[10px] space-y-1 text-grill-textMuted">
+                        <div class="flex justify-between"><span>Mesa Comedor:</span><span class="font-bold text-white">$11,984.48 (98.9%)</span></div>
+                        <div class="flex justify-between"><span>Rápido/Llevar:</span><span class="font-bold text-white">$125.00 (1.1%)</span></div>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- SECTION 2: COMPARATIVAS Y RENDIMIENTO DE PERSONAL -->
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            <!-- Left Card: Waiter Sales Performance -->
-            <div class="bg-bay-card border border-bay-border p-6 rounded-2xl flex flex-col justify-between">
+            <div class="space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                        <i class="fa-solid fa-list text-grill-orange"></i> Detalle de Ventas (Soft Restaurant)
+                    </h3>
+                    <div class="relative w-full sm:w-72">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-grill-textMuted">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                        </span>
+                        <input type="text" id="salesSearch" oninput="filterSalesTable()" placeholder="Buscar clave o descripción..." class="w-full bg-grill-darkest border border-grill-border focus:border-grill-orange rounded-xl pl-9 pr-4 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all">
+                    </div>
+                </div>
+
+                <div class="bg-grill-card border border-grill-border rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto max-h-80">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-grill-darkest sticky top-0 text-grill-textMuted font-bold border-b border-grill-border uppercase tracking-wider">
+                                <tr>
+                                    <th class="px-6 py-3.5">Clave</th>
+                                    <th class="px-6 py-3.5">Descripción</th>
+                                    <th class="px-6 py-3.5">Categoría</th>
+                                    <th class="px-6 py-3.5 text-center">Cantidad</th>
+                                    <th class="px-6 py-3.5 text-right">Precio</th>
+                                    <th class="px-6 py-3.5 text-right">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesTableBody" class="divide-y divide-grill-border/30">
+                                <!-- Populated dynamically by script -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-grill-darkest/60 px-6 py-3 text-right text-[11px] text-grill-textMuted border-t border-grill-border/40">
+                        <span id="salesRowCount">Cargando ventas...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-r from-grill-card to-[#192030] border border-grill-border rounded-2xl p-6 space-y-6">
                 <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2 mb-4">
-                        <i class="fa-solid fa-crown text-bay-gold"></i> Ventas por Mesero
+                    <span class="text-[10px] text-grill-orange font-bold uppercase tracking-wider">Integración Manual Integrada</span>
+                    <h3 class="text-md font-bold text-white flex items-center gap-2 mt-0.5">
+                        <i class="fa-solid fa-file-arrow-up text-grill-gold"></i> Cargar Reportes de Turno Soft Restaurant
                     </h3>
-                    <div class="relative h-48 w-full">
-                        <canvas id="waitersChart"></canvas>
-                    </div>
-                </div>
-                <!-- Clean legend & Leader detail -->
-                <div class="mt-4 pt-4 border-t border-bay-border/60">
-                    <div class="bg-bay-dark/60 border border-bay-border p-3 rounded-xl flex items-center justify-between text-xs">
-                        <span class="text-bay-textMuted">Mesero Destacado: <strong class="text-white">Joan</strong></span>
-                        <span class="font-bold text-bay-gold font-mono">$8,664.50 (62.5%)</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Center Card: Payment Methods Distribution -->
-            <div class="bg-bay-card border border-bay-border p-6 rounded-2xl flex flex-col justify-between">
-                <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2 mb-4">
-                        <i class="fa-solid fa-wallet text-bay-teal"></i> Formas de Pago
-                    </h3>
-                    <div class="relative h-48 w-full flex items-center justify-center">
-                        <canvas id="paymentsChart"></canvas>
-                    </div>
-                </div>
-                <!-- Payment Breakdown Details -->
-                <div class="space-y-2 text-xs pt-4 border-t border-bay-border/60">
-                    <div class="flex justify-between">
-                        <span class="text-bay-textMuted flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#10b981]"></span>Efectivo</span>
-                        <span class="font-mono font-semibold text-white">$11,394.50</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-bay-textMuted flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#0ea5e9]"></span>Tarjeta (Visa)</span>
-                        <span class="font-mono font-semibold text-white">$2,328.00</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-bay-textMuted flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-[#eab308]"></span>Transferencias</span>
-                        <span class="font-mono font-semibold text-white">$145.00</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Card: Sales by Area (Comedor vs. Takeout) -->
-            <div class="bg-bay-card border border-bay-border p-6 rounded-2xl flex flex-col justify-between">
-                <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2 mb-4">
-                        <i class="fa-solid fa-bowl-food text-bay-fire"></i> Ventas por Tipo de Servicio
-                    </h3>
-                    <div class="relative h-48 w-full flex items-center justify-center">
-                        <canvas id="serviceChart"></canvas>
-                    </div>
-                </div>
-                <!-- Service Breakdown Details -->
-                <div class="space-y-2 text-xs pt-4 border-t border-bay-border/60">
-                    <div class="flex justify-between">
-                        <span class="text-bay-textMuted">Comedor (Servicio en Mesa)</span>
-                        <span class="font-mono font-semibold text-white">$11,984.48 (98.97%)</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-bay-textMuted">Rápido / Para llevar</span>
-                        <span class="font-mono font-semibold text-white">$125.00 (1.03%)</span>
-                    </div>
-                </div>
-            </div>
-            
-        </section>
-
-        <!-- SECTION 3: PRODUCTOS MAS VENDIDOS & BUSCADOR DINÁMICO -->
-        <section class="space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-bay-border/60 pb-2">
-                <h2 class="text-md font-semibold tracking-wide uppercase text-bay-gold flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-xs"></i> Desglose de Ventas de Alimentos & Bebidas
-                </h2>
-                <!-- Minimal Search Bar -->
-                <div class="relative w-full sm:w-72">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-bay-textMuted">
-                        <i class="fa-solid fa-magnifying-glass text-xs"></i>
-                    </span>
-                    <input type="text" id="productSearch" oninput="filterProducts()" placeholder="Buscar producto vendido..." class="w-full bg-bay-card border border-bay-border focus:border-bay-teal rounded-xl pl-9 pr-4 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all">
-                </div>
-            </div>
-
-            <!-- Simplified Clean Table -->
-            <div class="bg-bay-card border border-bay-border rounded-2xl overflow-hidden">
-                <div class="overflow-x-auto max-h-96">
-                    <table class="w-full text-left text-xs border-collapse" id="productsTable">
-                        <thead class="bg-bay-dark/80 sticky top-0 border-b border-bay-border text-bay-textMuted font-semibold uppercase tracking-wider">
-                            <tr>
-                                <th class="px-6 py-3">Código</th>
-                                <th class="px-6 py-3">Platillo / Bebida</th>
-                                <th class="px-6 py-3">Categoría</th>
-                                <th class="px-6 py-3 text-center">Unidades</th>
-                                <th class="px-6 py-3 text-right">Precio</th>
-                                <th class="px-6 py-3 text-right">Recaudación</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-bay-border/50 text-slate-300" id="productsTbody">
-                            <!-- Populated dynamically via Javascript -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="bg-bay-dark/30 px-6 py-3 border-t border-bay-border/50 flex justify-between items-center text-[11px] text-bay-textMuted">
-                    <span>*Muchos jugos y cafés muestran precio $0 porque están incluidos dentro del paquete del desayuno completo.</span>
-                    <span id="rowCount" class="font-mono text-white font-semibold">Total: 49 productos listados</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- SECTION 4: CONTROL DE CAJA & ARQUEO DE AUDITORÍA -->
-        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            <!-- Cash Flow Audit Card -->
-            <div class="bg-bay-card border border-bay-border p-6 rounded-2xl space-y-4">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2 border-b border-bay-border/60 pb-2">
-                    <i class="fa-solid fa-vault text-bay-gold"></i> Arqueo de Efectivo en Caja
-                </h3>
-                
-                <div class="grid grid-cols-3 gap-3 text-center">
-                    <div class="bg-bay-dark/50 p-3 rounded-xl border border-bay-border">
-                        <p class="text-[10px] text-bay-textMuted uppercase">Fondo Inicial</p>
-                        <p class="text-sm font-bold text-white font-mono mt-1">$557.00</p>
-                    </div>
-                    <div class="bg-bay-dark/50 p-3 rounded-xl border border-bay-border">
-                        <p class="text-[10px] text-bay-textMuted uppercase">Retiros Parciales</p>
-                        <p class="text-sm font-bold text-bay-fire font-mono mt-1">-$10,442.00</p>
-                    </div>
-                    <div class="bg-bay-dark/50 p-3 rounded-xl border border-bay-border">
-                        <p class="text-[10px] text-bay-textMuted uppercase">Propinas Entregadas</p>
-                        <p class="text-sm font-bold text-bay-gold font-mono mt-1">-$451.50</p>
-                    </div>
-                </div>
-
-                <!-- Equation Layout -->
-                <div class="bg-bay-dark/30 border border-bay-border/70 p-4 rounded-xl space-y-2 font-mono text-xs text-slate-300">
-                    <div class="flex justify-between">
-                        <span>(+) Fondo Inicial</span>
-                        <span>$557.00</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span>(+) Ingresos en Efectivo</span>
-                        <span class="text-emerald-400">+$11,394.50</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span>(-) Retiros a Bóveda</span>
-                        <span class="text-bay-fire">-$10,442.00</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span>(-) Propinas Pagadas en Efectivo</span>
-                        <span class="text-bay-fire">-$451.50</span>
-                    </div>
-                    <div class="border-t border-bay-border/70 pt-2 flex justify-between font-bold text-bay-teal">
-                        <span>(=) Saldo Teórico Esperado</span>
-                        <span>$1,058.00</span>
-                    </div>
-                    <div class="flex justify-between text-white">
-                        <span>(Actual) Efectivo Declarado por Paola</span>
-                        <span>$1,057.00</span>
-                    </div>
-                    <div class="border-t border-dashed border-bay-border/70 pt-2 flex justify-between font-bold text-bay-fire">
-                        <span>Diferencia de Caja (Faltante)</span>
-                        <span>-$1.00</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Security Events Audit Card -->
-            <div class="bg-bay-card border border-bay-border p-6 rounded-2xl flex flex-col justify-between space-y-4">
-                <div>
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2 border-b border-bay-border/60 pb-2">
-                        <i class="fa-solid fa-shield-halved text-bay-fire"></i> Registro de Seguridad Operativa
-                    </h3>
-                    <p class="text-xs text-bay-textMuted mt-1">Monitoreo automático de incidencias y autorizaciones críticas del turno:</p>
-                </div>
-                
-                <div class="space-y-2 text-xs">
-                    <div class="flex justify-between items-center bg-bay-dark/40 border border-bay-border p-3 rounded-xl">
-                        <span class="text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrows-rotate text-bay-teal"></i> Re-apertura de Cuentas Cobradas</span>
-                        <span class="bg-bay-fire/10 text-bay-fire px-2.5 py-1 rounded font-bold font-mono">4 Veces</span>
-                    </div>
-                    <div class="flex justify-between items-center bg-bay-dark/40 border border-bay-border p-3 rounded-xl">
-                        <span class="text-slate-300 flex items-center gap-2"><i class="fa-solid fa-print text-bay-teal"></i> Re-impresión de Comanditas / Cuentas</span>
-                        <span class="bg-bay-gold/10 text-bay-gold px-2.5 py-1 rounded font-bold font-mono">4 Veces</span>
-                    </div>
-                    <div class="flex justify-between items-center bg-bay-dark/40 border border-bay-border p-3 rounded-xl">
-                        <span class="text-slate-300 flex items-center gap-2"><i class="fa-solid fa-ban text-emerald-400"></i> Cancelaciones Realizadas</span>
-                        <span class="bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded font-bold font-mono">0 Eventos</span>
-                    </div>
-                </div>
-
-                <div class="bg-bay-fire/10 border border-bay-fire/30 p-3.5 rounded-xl text-[11px] text-slate-300 flex gap-2">
-                    <i class="fa-solid fa-circle-info text-bay-fire text-xs mt-0.5"></i>
-                    <span>Las 4 re-aperturas de cuenta representan el único evento de control fuera de la norma. Se recomienda cruzarlas con el bitácora del mesero Joan para garantizar transparencia absoluta.</span>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- -->
-        <!-- SECTION 5: PORTAL DE CARGA MANUAL DE ARCHIVOS (Soft Restaurant) -->
-        <section class="bg-gradient-to-r from-bay-card to-[#0e162f] border border-bay-border rounded-2xl p-6 sm:p-8 space-y-6">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-bay-border/60 pb-4">
-                <div class="space-y-1">
-                    <span class="text-[10px] text-bay-teal font-bold uppercase tracking-wider">Carga y Actualización Manual</span>
-                    <h3 class="text-md font-bold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-file-arrow-up text-bay-gold"></i> Actualizar Datos del Turno
-                    </h3>
-                    <p class="text-xs text-bay-textMuted max-w-xl">
-                        Sube manualmente los archivos generados en Soft Restaurant para procesar, auditar y actualizar instantáneamente todas las gráficas de este panel.
+                    <p class="text-xs text-grill-textMuted max-w-xl">
+                        Sube los archivos generados del corte para registrar la recaudación y recalcular el stock de insumos.
                     </p>
                 </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Zone 1: PDF -->
+                    <div id="dropzonePdf" class="border-2 border-dashed border-grill-border hover:border-grill-orange/50 bg-grill-darkest/40 rounded-2xl p-5 flex flex-col items-center justify-center text-center transition-all cursor-pointer relative group">
+                        <input type="file" id="filePdf" accept=".pdf" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileSelected('pdf')">
+                        <div class="w-10 h-10 rounded-full bg-grill-orange/10 flex items-center justify-center text-grill-orange mb-2 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-file-pdf text-lg"></i>
+                        </div>
+                        <h4 class="text-xs font-bold text-white mb-0.5">Corte de Caja (PDF)</h4>
+                        <p class="text-[10px] text-grill-textMuted mb-2">Arrastra el archivo o haz clic aquí</p>
+                        <span id="labelPdf" class="text-[9px] bg-grill-darkest px-2.5 py-1 rounded-lg text-slate-400 max-w-xs truncate font-mono">corte_caja_Turno_7422_Empresa_1.pdf</span>
+                    </div>
+                    <!-- Zone 2: Excel -->
+                    <div id="dropzoneXls" class="border-2 border-dashed border-grill-border hover:border-grill-orange/50 bg-grill-darkest/40 rounded-2xl p-5 flex flex-col items-center justify-center text-center transition-all cursor-pointer relative group">
+                        <input type="file" id="fileXls" accept=".xls,.xlsx" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileSelected('xls')">
+                        <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-2 group-hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-file-excel text-lg"></i>
+                        </div>
+                        <h4 class="text-xs font-bold text-white mb-0.5">Productos Vendidos (Excel)</h4>
+                        <p class="text-[10px] text-grill-textMuted mb-2">Arrastra el archivo o haz clic aquí</p>
+                        <span id="labelXls" class="text-[9px] bg-grill-darkest px-2.5 py-1 rounded-lg text-slate-400 max-w-xs truncate font-mono">productosvendidos_1_7422.xls</span>
+                    </div>
+                </div>
+
+                <div class="bg-grill-darkest/40 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4 border border-grill-border/40">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-grill-orange/10 flex items-center justify-center text-grill-orange flex-shrink-0">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                        <div>
+                            <h5 class="text-xs font-semibold text-white">Consolidación en un solo click</h5>
+                            <p class="text-[10px] text-grill-textMuted">El sistema leerá los dos reportes cargados y deducirá los ingredientes correspondientes.</p>
+                        </div>
+                    </div>
+                    <button id="btnProcessUpload" onclick="processManualUpload()" class="w-full sm:w-auto bg-grill-orange hover:bg-grill-orangeHover text-grill-darkest font-extrabold text-xs px-6 py-2.5 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-grill-orange/20">
+                        <i class="fa-solid fa-sync"></i>
+                        <span>Procesar e Integrar Datos</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== MODULO 2: INVENTARIO (CON RECETAS Y AGREGAR CUENTA) ==================== -->
+        <section id="module-inventory" class="hidden space-y-8">
+            <!-- Sub-Header Metas -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-grill-border/60 pb-3">
+                <h2 class="text-lg font-bold font-display uppercase tracking-wide text-grill-orange flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked"></i> Control y Descuento de Inventario por Recetas
+                </h2>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs bg-grill-card border border-grill-border px-2.5 py-1 rounded-lg text-slate-300">Bodega Principal</span>
+                    <span class="text-xs bg-grill-card border border-grill-border px-2.5 py-1 rounded-lg text-slate-300">Estado de Recetas: Activo</span>
+                </div>
             </div>
 
-            <!-- Upload Zones Container -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <!-- Zone 1: Corte de Caja (PDF) -->
-                <div id="dropzonePdf" class="border-2 border-dashed border-bay-border hover:border-bay-teal/50 bg-bay-dark/30 rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all cursor-pointer relative group">
-                    <input type="file" id="filePdf" accept=".pdf" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileSelect('pdf')">
-                    <div class="w-12 h-12 rounded-full bg-bay-fire/15 flex items-center justify-center text-bay-fire mb-3 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-file-pdf text-xl"></i>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="bg-grill-card border border-grill-border p-4 rounded-xl">
+                    <p class="text-[10px] text-grill-textMuted font-bold uppercase tracking-wider">Insumos Registrados</p>
+                    <p class="text-2xl font-bold font-mono text-white mt-1" id="invTotalItems">18 Insumos</p>
+                </div>
+                <div class="bg-grill-card border border-grill-border p-4 rounded-xl">
+                    <p class="text-[10px] text-grill-textMuted font-bold uppercase tracking-wider">Alertas por Bajo Stock</p>
+                    <p class="text-2xl font-bold font-mono text-grill-red mt-1" id="invAlerts">0 Alertas</p>
+                </div>
+                <div class="bg-grill-card border border-grill-border p-4 rounded-xl col-span-2 md:col-span-1">
+                    <p class="text-[10px] text-grill-textMuted font-bold uppercase tracking-wider">Último Movimiento</p>
+                    <p class="text-xs font-semibold text-slate-300 mt-2 truncate" id="invLastMove">Turno inicializado con éxito</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left: Main Stock Table (2/3 width) -->
+                <div class="lg:col-span-2 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-white">Existencias de Materia Prima</h4>
+                        <span class="text-[10px] text-grill-orange font-bold">Descuento automático activo</span>
                     </div>
-                    <h4 class="text-xs font-bold text-white mb-1">Corte de Caja (PDF)</h4>
-                    <p class="text-[11px] text-bay-textMuted mb-2">Arrastra el archivo o haz clic para examinar</p>
-                    <span id="labelPdf" class="text-[10px] bg-bay-dark/80 px-2.5 py-1 rounded border border-bay-border text-slate-400 max-w-xs truncate font-mono">
-                        corte_caja_Turno_7422_Empresa_1.pdf
-                    </span>
+                    <div class="bg-grill-card border border-grill-border rounded-2xl overflow-hidden">
+                        <div class="overflow-x-auto max-h-[500px]">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-grill-darkest text-grill-textMuted border-b border-grill-border sticky top-0">
+                                    <tr>
+                                        <th class="px-5 py-3 font-semibold">Insumo</th>
+                                        <th class="px-5 py-3 font-semibold">Categoría</th>
+                                        <th class="px-5 py-3 font-semibold text-center">Existencia</th>
+                                        <th class="px-5 py-3 font-semibold text-center">Mínimo</th>
+                                        <th class="px-5 py-3 font-semibold">Estado</th>
+                                        <th class="px-5 py-3 text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventoryTableBody" class="divide-y divide-grill-border/30">
+                                    <!-- Populated dynamically by script -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Zone 2: Productos Vendidos (Excel) -->
-                <div id="dropzoneXls" class="border-2 border-dashed border-bay-border hover:border-bay-teal/50 bg-bay-dark/30 rounded-2xl p-6 flex flex-col items-center justify-center text-center transition-all cursor-pointer relative group">
-                    <input type="file" id="fileXls" accept=".xls,.xlsx" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileSelect('xls')">
-                    <div class="w-12 h-12 rounded-full bg-emerald-500/15 flex items-center justify-center text-emerald-400 mb-3 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-file-excel text-xl"></i>
+                <!-- Right Side: Add Account & Adjustment Widgets -->
+                <div class="space-y-6">
+                    <!-- Widget 1: Agregar Cuenta (Comanda de Platillos) -->
+                    <div class="bg-gradient-to-b from-[#181e2e] to-grill-card border border-grill-border p-5 rounded-2xl space-y-4 shadow-xl">
+                        <div class="border-b border-grill-border/60 pb-2">
+                            <span class="text-[9px] text-grill-orange font-black tracking-widest uppercase">Punto de Venta / Caja</span>
+                            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-cart-plus text-grill-gold"></i> Agregar Cuenta & Recetas
+                            </h4>
+                        </div>
+                        
+                        <p class="text-[11px] text-grill-textMuted">Selecciona los platillos para descontar sus ingredientes correspondientes de bodega:</p>
+                        
+                        <!-- List of Dishes with counters -->
+                        <div class="space-y-3" id="recipesListContainer">
+                            <!-- Populated dynamically by JS -->
+                        </div>
+
+                        <div class="pt-2">
+                            <button onclick="processRecipeAccount()" class="w-full bg-gradient-to-r from-grill-orange to-grill-gold hover:from-grill-orangeHover hover:to-grill-gold text-grill-darkest font-extrabold text-xs py-3 rounded-xl transition-all shadow-lg shadow-grill-orange/20 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-file-invoice-dollar"></i>
+                                Registrar Cuenta & Descontar
+                            </button>
+                        </div>
                     </div>
-                    <h4 class="text-xs font-bold text-white mb-1">Productos Vendidos (Excel)</h4>
-                    <p class="text-[11px] text-bay-textMuted mb-2">Arrastra el archivo o haz clic para examinar</p>
-                    <span id="labelXls" class="text-[10px] bg-bay-dark/80 px-2.5 py-1 rounded border border-bay-border text-slate-400 max-w-xs truncate font-mono">
-                        productosvendidos_1_7422.xls
+
+                    <!-- Widget 2: Ajuste de Stock Manual -->
+                    <div class="bg-grill-card border border-grill-border p-5 rounded-2xl space-y-4">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-grill-gold"></i> Ajuste de Stock Manual
+                        </h4>
+
+                        <div>
+                            <label class="block text-[10px] text-grill-textMuted font-bold uppercase mb-1.5">1. Seleccionar Insumo</label>
+                            <select id="adjProduct" class="w-full bg-grill-darkest border border-grill-border focus:border-grill-orange rounded-xl p-2.5 text-xs text-white focus:outline-none">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] text-grill-textMuted font-bold uppercase mb-1.5">2. Tipo de Movimiento</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" id="btnAdjIn" onclick="setAdjustmentType('IN')" class="bg-grill-green/20 text-grill-green border border-grill-green py-2 px-3 rounded-lg font-bold transition-all text-center text-xs">
+                                    ENTRADA (+)
+                                </button>
+                                <button type="button" id="btnAdjOut" onclick="setAdjustmentType('OUT')" class="bg-grill-darkest text-slate-400 border border-grill-border py-2 px-3 rounded-lg font-bold transition-all text-center text-xs">
+                                    MERMA/SALIDA (-)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] text-grill-textMuted font-bold uppercase mb-1.5">3. Cantidad a Ajustar</label>
+                            <div class="relative">
+                                <input type="number" id="adjQty" placeholder="0.00" step="any" min="0.1" class="w-full bg-grill-darkest border border-grill-border focus:border-grill-orange rounded-xl p-2.5 text-xs text-white focus:outline-none font-mono">
+                                <span class="absolute inset-y-0 right-3 flex items-center text-xs text-grill-textMuted" id="adjUnitLabel">Kg</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] text-grill-textMuted font-bold uppercase mb-1.5">4. Motivo / Observaciones</label>
+                            <input type="text" id="adjReason" placeholder="Ej. Ajuste diario por cocina" class="w-full bg-grill-darkest border border-grill-border focus:border-grill-orange rounded-xl p-2.5 text-xs text-white focus:outline-none">
+                        </div>
+
+                        <button onclick="submitAdjustment()" class="w-full bg-grill-orange hover:bg-grill-orangeHover text-grill-darkest font-extrabold text-xs py-2.5 rounded-xl transition-all shadow-lg shadow-grill-orange/10">
+                            Aplicar Movimiento
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-white">Bitácora de Movimientos del Turno</h4>
+                <div class="bg-grill-card border border-grill-border rounded-2xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-grill-darkest text-grill-textMuted border-b border-grill-border font-bold uppercase">
+                                <tr>
+                                    <th class="px-5 py-3">Fecha y Hora</th>
+                                    <th class="px-5 py-3">Insumo</th>
+                                    <th class="px-5 py-3">Operación</th>
+                                    <th class="px-5 py-3 text-center">Cantidad</th>
+                                    <th class="px-5 py-3">Motivo / Notas</th>
+                                    <th class="px-5 py-3">Responsable</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invLogsBody" class="divide-y divide-grill-border/30">
+                                <!-- Populated dynamically by script -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== MODULO 3: WHATSAPP EVOLUTION API ==================== -->
+        <section id="module-whatsapp" class="hidden space-y-6">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-grill-border/60 pb-3">
+                <h2 class="text-lg font-bold font-display uppercase tracking-wide text-grill-orange flex items-center gap-2">
+                    <i class="fa-brands fa-whatsapp text-xl"></i> Panel del Operador & Chat en Vivo
+                </h2>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs bg-grill-card border border-grill-border px-2.5 py-1 rounded-lg text-slate-300 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Evolution API: Online
                     </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[550px] h-[550px]">
+                
+                <!-- Left Panel: Chat List & Status (4 Cols) -->
+                <div class="lg:col-span-4 bg-grill-card border border-grill-border rounded-2xl flex flex-col overflow-hidden">
+                    <!-- Session Header Info -->
+                    <div class="p-4 border-b border-grill-border/80 bg-grill-darkest/40">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-[10px] text-grill-orange font-bold uppercase tracking-wider">Instancia Conectada</span>
+                            <span class="text-[10px] bg-grill-green/10 text-grill-green border border-grill-green/30 px-2 py-0.5 rounded font-mono">jimmys_main_01</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-grill-orange/15 flex items-center justify-center text-grill-orange relative">
+                                <i class="fa-solid fa-fire text-lg"></i>
+                                <span class="absolute bottom-0 right-0 w-3 h-3 bg-grill-green rounded-full border-2 border-grill-card"></span>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Jimmy's Grill (Oficial)</h4>
+                                <p class="text-[10px] text-grill-textMuted font-mono">+52 (311) 688-1211</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Rooms Search & Filter -->
+                    <div class="p-3 border-b border-grill-border/50">
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-grill-textMuted">
+                                <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                            </span>
+                            <input type="text" id="chatSearch" oninput="filterChats()" placeholder="Buscar cliente o número..." class="w-full bg-grill-darkest border border-grill-border focus:border-grill-orange rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <!-- Chat Rooms List -->
+                    <div class="flex-1 overflow-y-auto divide-y divide-grill-border/30" id="chatRoomsContainer">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Right Panel: Conversation View (8 Cols) -->
+                <div class="lg:col-span-8 bg-grill-card border border-grill-border rounded-2xl flex flex-col overflow-hidden relative">
+                    <!-- Conversation Header -->
+                    <div class="p-4 border-b border-grill-border/80 bg-grill-darkest/40 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-grill-orange/20 to-grill-gold/20 flex items-center justify-center text-grill-orange font-bold text-sm" id="activeChatAvatar">
+                                JP
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white" id="activeChatName">Juan Pérez</h4>
+                                <p class="text-[10px] text-grill-textMuted" id="activeChatPhone">+52 (311) 123-4567</p>
+                            </div>
+                        </div>
+                        <!-- Connection state badge -->
+                        <div class="flex items-center gap-3">
+                            <div class="text-right hidden sm:block">
+                                <p class="text-[10px] text-slate-300 font-medium">Asignado a: <span class="text-grill-gold font-bold">Mesa de Ayuda</span></p>
+                                <p class="text-[9px] text-grill-textMuted font-mono">ID Evolution: msg_v8X129</p>
+                            </div>
+                            <button onclick="refreshActiveChat()" class="p-2 hover:bg-grill-border/50 text-slate-400 hover:text-white rounded-lg transition-all" title="Actualizar Chat">
+                                <i class="fa-solid fa-rotate-right text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages Feed -->
+                    <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-grill-darkest/25" id="chatMessagesFeed" style="background-image: radial-gradient(rgba(34, 45, 66, 0.15) 1px, transparent 0); background-size: 16px 16px;">
+                        <!-- Messages will render here dynamically -->
+                    </div>
+
+                    <!-- Chat Input System -->
+                    <div class="p-4 border-t border-grill-border/80 bg-grill-darkest/40">
+                        <form onsubmit="handleSendChat(event)" class="flex gap-2.5">
+                            <button type="button" onclick="insertQuickReply()" class="p-2.5 bg-grill-darkest/80 border border-grill-border hover:border-grill-gold hover:text-grill-gold text-slate-400 rounded-xl transition-all" title="Inserta Respuesta Rápida">
+                                <i class="fa-solid fa-bolt text-xs"></i>
+                            </button>
+                            <input type="text" id="chatInputField" autocomplete="off" placeholder="Escribe un mensaje de respuesta para Evolution API..." class="flex-1 bg-grill-darkest border border-grill-border focus:border-grill-orange rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none transition-all">
+                            <button type="submit" class="bg-grill-orange hover:bg-grill-orangeHover text-grill-darkest font-extrabold px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-grill-orange/15">
+                                <i class="fa-solid fa-paper-plane text-xs"></i>
+                                <span class="hidden sm:inline text-xs">Enviar</span>
+                            </button>
+                        </form>
+                        <div class="flex justify-between items-center mt-2.5 text-[9px] text-grill-textMuted px-1">
+                            <span>Canal de envío: <strong class="text-slate-400 font-mono">evolution_api_text_sender</strong></span>
+                            <span>Respuesta automática simulada activa (1.5s delay)</span>
+                        </div>
+                    </div>
                 </div>
 
             </div>
 
-            <!-- Action Area / Feedback Loader -->
-            <div class="bg-bay-dark/50 border border-bay-border/80 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-lg bg-bay-teal/10 flex items-center justify-center text-bay-teal">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    </div>
-                    <div>
-                        <h5 class="text-xs font-semibold text-white">Sincronización Inteligente</h5>
-                        <p class="text-[11px] text-bay-textMuted">El sistema extraerá automáticamente las ventas, propinas, comensales y comportamiento de caja.</p>
+            <div class="bg-gradient-to-r from-grill-card to-grill-card/60 border border-grill-border rounded-2xl p-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                <div class="md:col-span-8 space-y-2">
+                    <span class="text-[10px] text-grill-orange font-bold uppercase tracking-wider">Configuración de Canal de Mensajería</span>
+                    <h3 class="text-md font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-qrcode text-grill-gold"></i> Sincronizar un Número Alternativo o Reconectar
+                    </h3>
+                    <p class="text-xs text-grill-textMuted max-w-2xl leading-relaxed">
+                        Si necesitas re-establecer el webhook o vincular un nuevo smartphone para enviar alertas automáticas de arqueos, cancelaciones o mermas desde Soft Restaurant, escanea el código QR de emparejamiento.
+                    </p>
+                    <div class="flex gap-2.5 pt-1.5">
+                        <span class="bg-grill-darkest border border-grill-border px-3 py-1.5 rounded-lg text-[10px] font-mono text-slate-300">
+                            Webhook: <span class="text-grill-orange">https://api.evolution.jimmys.mx/webhook/jimmys_main_01</span>
+                        </span>
+                        <button onclick="copyToClipboard('https://api.evolution.jimmys.mx/webhook/jimmys_main_01')" class="hover:text-white text-slate-400 transition-all px-2 bg-grill-darkest border border-grill-border rounded-lg" title="Copiar URL">
+                            <i class="fa-solid fa-copy text-xs"></i>
+                        </button>
                     </div>
                 </div>
-                
-                <button id="btnProcess" onclick="processManualUpload()" class="w-full sm:w-auto bg-bay-gold text-bay-dark font-bold text-xs px-6 py-2.5 rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-bay-gold/10">
-                    <i class="fa-solid fa-sync"></i>
-                    <span>Procesar e Integrar Datos</span>
-                </button>
+                <div class="md:col-span-4 flex justify-center">
+                    <div class="bg-white p-3 rounded-xl flex flex-col items-center justify-center relative group w-36 h-36 border border-grill-border">
+                        <img id="qrCodeImage" src="https://placehold.co/120x120/ffffff/000000?text=WhatsApp+API" alt="Evolution API QR Link" class="w-full h-full object-contain">
+                        <div class="absolute inset-0 bg-grill-darkest/90 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-center p-2 rounded-xl transition-all cursor-pointer" onclick="refreshQR()">
+                            <i class="fa-solid fa-rotate-right text-grill-orange text-xl mb-1"></i>
+                            <span class="text-[9px] text-white font-bold uppercase">Actualizar QR</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
     </main>
 
-    <!-- Subtle Premium Footer -->
-    <footer class="border-t border-bay-border/60 py-6 text-center text-xs text-bay-textMuted bg-bay-dark">
-        <p>&copy; 2026 Maya Bay. Todos los derechos reservados. | Sistema de Monitoreo Integrado de Soft Restaurant.</p>
+    <!-- Footer -->
+    <footer class="border-t border-grill-border py-6 text-center text-xs text-grill-textMuted bg-grill-darkest mt-8">
+        <p>&copy; 2026 Jimmy's Grill. Todos los derechos reservados. | Sistema de Inteligencia Comercial de Soft Restaurant & Evolution API.</p>
     </footer>
 
     <!-- Toast Notification System -->
-    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 bg-bay-card border border-bay-gold p-4 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in">
-        <i class="fa-solid fa-circle-check text-bay-gold"></i>
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 bg-grill-card border border-grill-orange p-4 rounded-xl shadow-2xl flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-grill-orange text-lg"></i>
         <span class="text-xs text-white" id="toastMsg">Enlace copiado al portapapeles</span>
     </div>
 
-    <!-- -->
     <script>
-        // Real raw data compiled directly from productsvendidos_1_7422.xls [source: 1]
-        const productsList = [
+        // Module active state variable
+        let currentModule = 'sales';
+
+        // ---------------- DATOS DE VENTAS (PRODUCTOS VENDIDOS SOFT RESTAURANT) ----------------
+        // Conexión con productosvendidos_1_7422.xls
+        const rawSalesList = [
             // BEBIDAS
             { clave: "2038", desc: "AMERICANO CON REFIL", cat: "BEBIDAS", cant: 53, precio: 0, total: 0 },
             { clave: "2043", desc: "CAPUCHINO", cat: "BEBIDAS", cant: 1, precio: 55, total: 55 },
@@ -432,14 +612,14 @@
             { clave: "1009", desc: "VASO AGUA FRESCA 375ML", cat: "BEBIDAS", cant: 1, precio: 45, total: 45 },
             // CERVEZAS
             { clave: "3005", desc: "MODELO ESPECIAL 355ML", cat: "CERVEZAS", cant: 1, precio: 50, total: 50 },
-            // DESAYUNOS
-            { clave: "2028", desc: "ARRACHERA DESAYUNO", cat: "DESAYUNOS", cant: 7, precio: 0, total: 0 },
-            { clave: "26121", desc: "BISTECK RANCHERO", cat: "DESAYUNOS", cant: 5, precio: 0, total: 0 },
-            { clave: "2031", desc: "CARNE CON CHILE", cat: "DESAYUNOS", cant: 9, precio: 0, total: 0 },
+            // DESAYUNOS / CORTES GRILL
+            { clave: "2028", desc: "ARRACHERA DESAYUNO", cat: "GRILL", cant: 7, precio: 0, total: 0 },
+            { clave: "26121", desc: "BISTECK RANCHERO", cat: "GRILL", cant: 5, precio: 0, total: 0 },
+            { clave: "2031", desc: "CARNE CON CHILE", cat: "GRILL", cant: 9, precio: 0, total: 0 },
             { clave: "27006", desc: "CHAPATA DE POLLO Y PANELA", cat: "DESAYUNOS", cant: 2, precio: 0, total: 0 },
             { clave: "2083", desc: "CHICHARRON EN SALSA", cat: "DESAYUNOS", cant: 4, precio: 0, total: 0 },
-            { clave: "2006", desc: "CHILAQUILES CON ARRACHERA (Cortesia)", cat: "DESAYUNOS", cant: 6, precio: 0, total: 0 },
-            { clave: "2006", desc: "CHILAQUILES CON ARRACHERA", cat: "DESAYUNOS", cant: 3, precio: 145, total: 435 },
+            { clave: "2006", desc: "CHILAQUILES CON ARRACHERA (Cortesia)", cat: "GRILL", cant: 6, precio: 0, total: 0 },
+            { clave: "2006", desc: "CHILAQUILES CON ARRACHERA", cat: "GRILL", cant: 3, precio: 145, total: 435 },
             { clave: "2082", desc: "CHILAQUILES CON CAMARON", cat: "DESAYUNOS", cant: 1, precio: 0, total: 0 },
             { clave: "2011", desc: "CHILAQUILES CON HUEVO", cat: "DESAYUNOS", cant: 1, precio: 0, total: 0 },
             { clave: "2010", desc: "CHILAQUILES CON POLLO", cat: "DESAYUNOS", cant: 2, precio: 0, total: 0 },
@@ -481,86 +661,772 @@
             { clave: "11016", desc: "COCA COLA LIGHT355ML", cat: "REFRESCOS", cant: 1, precio: 40, total: 40 }
         ];
 
-        // Fill dynamic table
-        function renderTable(dataToDisplay) {
-            const tbody = document.getElementById('productsTbody');
-            tbody.innerHTML = '';
+        const rawInventory = [
+            { id: "carne", nombre: "Cortes de Arrachera Prime", cat: "Carnes", stock: 15.0, min: 20.0, unit: "Kg" },
+            { id: "bisteck", nombre: "Bisteck para Guisar", cat: "Carnes", stock: 32.5, min: 15.0, unit: "Kg" },
+            { id: "carbon", nombre: "Carbón de Encino", cat: "Combustible", stock: 85.0, min: 50.0, unit: "Kg" },
+            { id: "brioche", nombre: "Pan Brioche de Hamburguesa", cat: "Panadería", stock: 8.0, min: 25.0, unit: "Pz" },
+            { id: "cerveza", nombre: "Cerveza Modelo Especial", cat: "Bebidas", stock: 48.0, min: 24.0, unit: "Pz" },
+            { id: "pan_dulce", nombre: "Pieza Pan Dulce", cat: "Panadería", stock: 110.0, min: 40.0, unit: "Pz" },
+            { id: "cafe", nombre: "Café en Grano Coatepec", cat: "Bebidas", stock: 4.8, min: 10.0, unit: "Kg" },
+            { id: "naranja", nombre: "Naranja Valencia (Zumo)", cat: "Frutas", stock: 120.0, min: 50.0, unit: "Kg" },
+            { id: "fruta", nombre: "Fruta Picada Variada", cat: "Frutas", stock: 14.0, min: 10.0, unit: "Kg" },
+            { id: "huevo", nombre: "Huevo Orgánico Local", cat: "Abarrotes", stock: 240.0, min: 100.0, unit: "Pz" },
+            { id: "refrescos", nombre: "Coca Cola 355ml", cat: "Bebidas", stock: 72.0, min: 30.0, unit: "Pz" },
+            { id: "jamon_serrano", nombre: "Jamón Serrano Reserva", cat: "Carnes", stock: 1.5, min: 3.0, unit: "Kg" },
+            // Insumos agregados para recetas específicas del ticket
+            { id: "pulpo", nombre: "Pulpo Fresco", cat: "Mariscos", stock: 10.0, min: 4.0, unit: "Kg" },
+            { id: "vino_tinto", nombre: "Vino Tinto (Clericot)", cat: "Bebidas", stock: 15.0, min: 3.0, unit: "L" },
+            { id: "ron_blanco", nombre: "Ron Blanco", cat: "Bebidas", stock: 8.0, min: 2.0, unit: "L" },
+            { id: "hierbabuena", nombre: "Hierbabuena Fresca", cat: "Abarrotes", stock: 3.0, min: 0.5, unit: "Kg" },
+            { id: "refrescolima", nombre: "Refresco Sabor Lima", cat: "Bebidas", stock: 20.0, min: 5.0, unit: "L" },
+            { id: "fruta_clericot", nombre: "Fruta Picada Fina", cat: "Frutas", stock: 12.0, min: 3.0, unit: "Kg" }
+        ];
+
+        // Recetario oficial de Jimmy's Grill
+        const recipesDatabase = [
+            {
+                id: "arrachera",
+                nombre: "Arrachera Grill",
+                icono: "fa-fire-burner text-grill-orange",
+                ingredientes: [
+                    { id: "carne", cant: 0.300, desc: "300g Arrachera Prime" },
+                    { id: "carbon", cant: 0.500, desc: "500g Carbón de Encino" }
+                ]
+            },
+            {
+                id: "clericot",
+                nombre: "Clericot",
+                icono: "fa-wine-glass text-purple-400",
+                ingredientes: [
+                    { id: "vino_tinto", cant: 0.150, desc: "150ml Vino Tinto" },
+                    { id: "fruta_clericot", cant: 0.050, desc: "50g Fruta Picada Fina" }
+                ]
+            },
+            {
+                id: "pulpo",
+                nombre: "Pulpo Zarandeado",
+                icono: "fa-shrimp text-pink-400",
+                ingredientes: [
+                    { id: "pulpo", cant: 0.350, desc: "350g Pulpo Fresco" },
+                    { id: "carbon", cant: 0.400, desc: "400g Carbón de Encino" }
+                ]
+            },
+            {
+                id: "mojito",
+                nombre: "Mojito Premium",
+                icono: "fa-glass-martini-alt text-green-400",
+                ingredientes: [
+                    { id: "ron_blanco", cant: 0.060, desc: "60ml Ron Blanco" },
+                    { id: "hierbabuena", cant: 0.015, desc: "15g Hierbabuena Fresca" },
+                    { id: "refrescolima", cant: 0.200, desc: "200ml Refresco Sabor Lima" }
+                ]
+            }
+        ];
+
+        // Objeto de cantidades seleccionadas temporalmente para agregar cuenta
+        let selectedTicketQuantities = {
+            arrachera: 0,
+            clericot: 0,
+            pulpo: 0,
+            mojito: 0
+        };
+
+        // Insumos Logs
+        const inventoryLogs = [
+            { fecha: "29/05/2026 07:56:54 AM", insumo: "Apertura de Caja", op: "INICIAL", cant: "", motivo: "Inventario inicial verificado para el Turno", responsable: "Paola" },
+            { fecha: "29/05/2026 09:12:05 AM", insumo: "Carbón de Encino", op: "ENTRADA", cant: "+50.0 Kg", motivo: "Compra local de emergencia", responsable: "Joan" },
+            { fecha: "29/05/2026 10:45:22 AM", insumo: "Pan Brioche de Hamburguesa", op: "SALIDA", cant: "-15.0 Pz", motivo: "Mermas por caducidad", responsable: "Paola" }
+        ];
+
+        // Selected adjustment type for the manual form
+        let activeAdjustmentType = 'IN';
+
+        // ---------------- DATOS DE CHAT WHATSAPP EVOLUTION API (ESTRUCTURA DE CHATROOMS) ----------------
+        const chatsDatabase = [
+            {
+                id: "chat_01",
+                nombre: "Juan Pérez",
+                phone: "+52 (311) 123-4567",
+                status: "online",
+                avatarText: "JP",
+                lastMsg: "¡Buenos días! Tu reserva para 3 personas a las 8:30 AM está confirmada.",
+                lastMsgTime: "08:15 AM",
+                unread: false,
+                messages: [
+                    { sender: "client", text: "Hola buen día, quiero confirmar si tienen registrada mi reservación de hoy.", time: "08:12 AM" },
+                    { sender: "api", text: "¡Buenos días! Sí, tu reserva para 3 personas a las 8:30 AM está confirmada en nuestra terraza principal. ¡Te esperamos!", time: "08:15 AM" }
+                ]
+            },
+            {
+                id: "chat_02",
+                nombre: "María Gómez",
+                phone: "+52 (311) 987-6543",
+                status: "typing",
+                avatarText: "MG",
+                lastMsg: "Hola, ¿tienen espacio para comer en terraza ahorita?",
+                lastMsgTime: "09:30 AM",
+                unread: true,
+                messages: [
+                    { sender: "client", text: "Hola, ¿tienen espacio para comer en terraza ahorita?", time: "09:30 AM" },
+                    { sender: "api", text: "¡Hola María! Sí, contamos con mesas libres en la terraza principal con excelente vista al centro. ¡Te esperamos!", time: "09:32 AM" }
+                ]
+            },
+            {
+                id: "chat_03",
+                nombre: "Bot de Alertas (Gerencia)",
+                phone: "+52 (311) 555-9000",
+                status: "offline",
+                avatarText: "🤖",
+                lastMsg: "Notificación de arqueo parcial: Retiro a Bóveda por $5,000.00 enviado a Gerencia.",
+                lastMsgTime: "11:24 AM",
+                unread: false,
+                messages: [
+                    { sender: "api", text: "Turno de Paola inicializado con $557.00 de fondo.", time: "07:56 AM" },
+                    { sender: "api", text: "Notificación de arqueo parcial: Retiro a Bóveda por $5,000.00 enviado a Gerencia.", time: "11:24 AM" }
+                ]
+            }
+        ];
+
+        let activeChatId = "chat_01";
+
+        function switchModule(moduleName) {
+            currentModule = moduleName;
             
-            dataToDisplay.forEach(item => {
+            // Hide all modules
+            document.getElementById('module-sales').classList.add('hidden');
+            document.getElementById('module-inventory').classList.add('hidden');
+            document.getElementById('module-whatsapp').classList.add('hidden');
+
+            // Deactivate all tab styles
+            const tabs = ['sales', 'inventory', 'whatsapp'];
+            tabs.forEach(tab => {
+                const btn = document.getElementById(`tab-${tab}`);
+                if (btn) {
+                    btn.className = "flex flex-col sm:flex-row items-center justify-center gap-2.5 py-3 px-2 rounded-xl text-xs sm:text-sm font-bold tracking-wide text-grill-textMuted hover:text-white transition-all";
+                }
+            });
+
+            // Show selected module & update tab styles
+            document.getElementById(`module-${moduleName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${moduleName}`);
+            if (activeBtn) {
+                activeBtn.className = "flex flex-col sm:flex-row items-center justify-center gap-2.5 py-3 px-2 rounded-xl text-xs sm:text-sm font-bold tracking-wide transition-all bg-grill-orange text-grill-darkest active-glow-orange";
+            }
+
+            if(moduleName === 'whatsapp') {
+                renderChatRoomsList();
+                renderActiveConversation();
+            }
+
+            showToast(`Módulo: ${moduleName.toUpperCase()} cargado.`);
+        }
+
+        // ---------------- CONTROL DE TABLA DE VENTAS ----------------
+        function renderSalesTable(data) {
+            const tbody = document.getElementById('salesTableBody');
+            tbody.innerHTML = '';
+            data.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-bay-border/30 transition-colors border-b border-bay-border/30';
-                
+                tr.className = 'hover:bg-grill-border/20 transition-colors border-b border-grill-border/30';
                 tr.innerHTML = `
-                    <td class="px-6 py-3 font-mono text-bay-textMuted">${item.clave}</td>
-                    <td class="px-6 py-3 font-semibold text-white">${item.desc}</td>
+                    <td class="px-6 py-3 font-mono text-grill-textMuted">${item.clave}</td>
+                    <td class="px-6 py-3 font-bold text-white">${item.desc}</td>
                     <td class="px-6 py-3">
                         <span class="px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider ${
-                            item.cat === 'DESAYUNOS' ? 'bg-amber-500/10 text-amber-400' :
-                            item.cat === 'BEBIDAS' ? 'bg-teal-500/10 text-teal-400' :
-                            'bg-sky-500/10 text-sky-400'
+                            item.cat === 'GRILL' ? 'bg-orange-500/10 text-grill-orange' :
+                            item.cat === 'BEBIDAS' ? 'bg-yellow-500/10 text-grill-gold' :
+                            'bg-slate-500/10 text-slate-300'
                         }">${item.cat}</span>
                     </td>
                     <td class="px-6 py-3 text-center font-mono">${item.cant}</td>
                     <td class="px-6 py-3 text-right font-mono">$${item.precio.toFixed(2)}</td>
-                    <td class="px-6 py-3 text-right font-mono font-bold ${item.total > 0 ? 'text-white' : 'text-bay-textMuted'}">$${item.total.toFixed(2)}</td>
+                    <td class="px-6 py-3 text-right font-mono font-bold ${item.total > 0 ? 'text-white' : 'text-grill-textMuted'}">$${item.total.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('salesRowCount').innerText = `${data.length} Productos listados`;
+        }
+
+        function filterSalesTable() {
+            const q = document.getElementById('salesSearch').value.toLowerCase();
+            const filtered = rawSalesList.filter(item => item.desc.toLowerCase().includes(q) || item.clave.includes(q));
+            renderSalesTable(filtered);
+        }
+
+        function renderInventoryTable() {
+            const tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = '';
+            let alertCount = 0;
+
+            rawInventory.forEach(item => {
+                const isLow = item.stock <= item.min;
+                if(isLow) alertCount++;
+
+                const statusColor = isLow ? 'bg-grill-red/10 text-grill-red border border-grill-red/20' : 'bg-grill-green/10 text-grill-green border border-grill-green/20';
+                const statusText = isLow ? 'BAJO STOCK' : 'EXCELENTE';
+                
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-grill-border/20 transition-colors border-b border-grill-border/30';
+                tr.innerHTML = `
+                    <td class="px-5 py-3 font-bold text-white">${item.nombre}</td>
+                    <td class="px-5 py-3 text-grill-textMuted">${item.cat}</td>
+                    <td class="px-5 py-3 text-center font-mono font-bold text-white">${item.stock.toFixed(3)} ${item.unit}</td>
+                    <td class="px-5 py-3 text-center font-mono text-grill-textMuted">${item.min.toFixed(1)} ${item.unit}</td>
+                    <td class="px-5 py-3">
+                        <span class="px-2.5 py-0.5 rounded text-[10px] font-bold tracking-wider ${statusColor}">
+                            ${statusText}
+                        </span>
+                    </td>
+                    <td class="px-5 py-3 text-right">
+                        <button onclick="quickRefill('${item.id}', 10)" class="bg-grill-orange/10 hover:bg-grill-orange text-grill-orange hover:text-grill-darkest px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wide transition-all border border-grill-orange/20">
+                            +10 Surtir
+                        </button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            document.getElementById('rowCount').innerText = `Total: ${dataToDisplay.length} productos listados`;
+            document.getElementById('invTotalItems').innerText = `${rawInventory.length} Insumos`;
+            document.getElementById('invAlerts').innerText = `${alertCount} Alertas`;
         }
 
-        // Search engine logic
-        function filterProducts() {
-            const query = document.getElementById('productSearch').value.toLowerCase();
-            const filtered = productsList.filter(p => p.desc.toLowerCase().includes(query) || p.clave.includes(query));
-            renderTable(filtered);
+        // Render cooking recipe comanda widget
+        function renderRecipesWidget() {
+            const container = document.getElementById('recipesListContainer');
+            if(!container) return;
+            container.innerHTML = '';
+
+            recipesDatabase.forEach(dish => {
+                const qtySelected = selectedTicketQuantities[dish.id] || 0;
+
+                // Create ingredients text for hover/info
+                const ingredientsStr = dish.ingredientes.map(i => `${i.desc}`).join(" + ");
+
+                const div = document.createElement('div');
+                div.className = "bg-grill-darkest/50 border border-grill-border p-3 rounded-xl flex items-center justify-between gap-2 hover:border-grill-orange/35 transition-colors";
+                div.innerHTML = `
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-8 h-8 rounded-lg bg-grill-card border border-grill-border flex items-center justify-center">
+                            <i class="fa-solid ${dish.icono}"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h5 class="text-xs font-bold text-white truncate">${dish.nombre}</h5>
+                            <p class="text-[9px] text-grill-textMuted truncate">${ingredientsStr}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <button onclick="updateTicketQty('${dish.id}', -1)" class="w-6 h-6 rounded bg-grill-card hover:bg-grill-border text-white text-xs font-bold transition-colors">-</button>
+                        <span class="w-5 text-center font-mono text-xs text-white font-bold">${qtySelected}</span>
+                        <button onclick="updateTicketQty('${dish.id}', 1)" class="w-6 h-6 rounded bg-grill-orange text-grill-darkest font-bold text-xs hover:bg-grill-orangeHover transition-colors">+</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
         }
 
-        // Handle file selection visuals
-        function handleFileSelect(type) {
-            const input = document.getElementById(type === 'pdf' ? 'filePdf' : 'fileXls');
-            const label = document.getElementById(type === 'pdf' ? 'labelPdf' : 'labelXls');
-            const dropzone = document.getElementById(type === 'pdf' ? 'dropzonePdf' : 'dropzoneXls');
+        function updateTicketQty(dishId, change) {
+            const current = selectedTicketQuantities[dishId] || 0;
+            const newVal = Math.max(0, current + change);
+            selectedTicketQuantities[dishId] = newVal;
+            renderRecipesWidget();
+        }
+
+        function processRecipeAccount() {
+            // Check if user selected any items
+            const totalItems = Object.values(selectedTicketQuantities).reduce((a, b) => a + b, 0);
+            if (totalItems === 0) {
+                showToast("Por favor selecciona al menos 1 platillo para la comanda.");
+                return;
+            }
+
+            // Step 1: Calculate total required ingredients
+            let neededIngredients = {}; // Maps ingredient id to amount needed
+
+            for (const dishId in selectedTicketQuantities) {
+                const qty = selectedTicketQuantities[dishId];
+                if (qty === 0) continue;
+
+                const recipeObj = recipesDatabase.find(r => r.id === dishId);
+                if (recipeObj) {
+                    recipeObj.ingredientes.forEach(ingredient => {
+                        const totalNeeded = ingredient.cant * qty;
+                        neededIngredients[ingredient.id] = (neededIngredients[ingredient.id] || 0) + totalNeeded;
+                    });
+                }
+            }
+
+            // Step 2: Validate stock sufficiency
+            let insufficientStock = [];
+            for (const ingId in neededIngredients) {
+                const item = rawInventory.find(i => i.id === ingId);
+                if (!item) continue;
+                if (item.stock < neededIngredients[ingId]) {
+                    insufficientStock.push({
+                        name: item.nombre,
+                        available: item.stock,
+                        needed: neededIngredients[ingId],
+                        unit: item.unit
+                    });
+                }
+            }
+
+            if (insufficientStock.length > 0) {
+                let errorMsg = "Insumos insuficientes en almacén: " + 
+                    insufficientStock.map(x => `${x.name} (Necesitado: ${x.needed.toFixed(2)}${x.unit}, Disponible: ${x.available.toFixed(2)}${x.unit})`).join(", ");
+                showToast(errorMsg);
+                return;
+            }
+
+            // Step 3: Deduct from stock & write logs
+            let logDetails = [];
+            for (const ingId in neededIngredients) {
+                const item = rawInventory.find(i => i.id === ingId);
+                if (item) {
+                    const originalStock = item.stock;
+                    item.stock -= neededIngredients[ingId];
+                    const amountDeductedStr = `-${neededIngredients[ingId].toFixed(3)} ${item.unit}`;
+                    
+                    // Add details for user toast and global log list
+                    logDetails.push(`${item.nombre}: ${amountDeductedStr}`);
+                    addInventoryLog(item.nombre, "SALIDA", amountDeductedStr, `Descuento automático por preparación de comanda`, "Caja/Mesero");
+                }
+            }
+
+            // Build dynamic text of ordered dishes
+            let orderDescription = [];
+            for (const dishId in selectedTicketQuantities) {
+                const qty = selectedTicketQuantities[dishId];
+                if (qty > 0) {
+                    const dishObj = recipesDatabase.find(r => r.id === dishId);
+                    orderDescription.push(`${qty} ${dishObj.nombre}`);
+                }
+            }
+            const summaryText = orderDescription.join(", ");
+
+            // Step 4: Update UI Elements
+            renderInventoryTable();
+            renderInventoryLogs();
             
-            if (input.files && input.files[0]) {
-                const fileName = input.files[0].name;
-                label.innerText = fileName;
-                label.className = "text-[10px] bg-bay-teal/10 px-2.5 py-1 rounded border border-bay-teal/30 text-bay-teal max-w-xs truncate font-mono font-bold";
-                dropzone.classList.remove('border-bay-border');
-                dropzone.classList.add('border-bay-teal/50', 'bg-bay-teal/5');
-                
-                showToast(`Archivo ${type.toUpperCase()} listo para integrar`);
+            // Set last move text on widget dashboard
+            document.getElementById('invLastMove').innerText = `Cuenta registrada: ${summaryText}`;
+
+            // Reset selected quantities
+            for (const key in selectedTicketQuantities) {
+                selectedTicketQuantities[key] = 0;
+            }
+            renderRecipesWidget();
+
+            // Step 5: Send notification automatically to Evolution API alerts channel
+            const alertsChat = chatsDatabase.find(c => c.id === 'chat_03');
+            if (alertsChat) {
+                const now = new Date();
+                alertsChat.messages.push({
+                    sender: "api",
+                    text: `🔔 ALERTA DE STOCK: Se ha registrado cuenta en salón: [${summaryText}]. Bodega descontada exitosamente.`,
+                    time: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                });
+                alertsChat.lastMsg = `Comanda registrada: ${summaryText}`;
+                alertsChat.lastMsgTime = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                if (activeChatId === 'chat_03') {
+                    renderActiveConversation();
+                } else {
+                    alertsChat.unread = true;
+                }
+                renderChatRoomsList();
+            }
+
+            showToast(`¡Comanda registrada con éxito! Stock descontado de bodega.`);
+        }
+
+        function populateInventorySelect() {
+            const select = document.getElementById('adjProduct');
+            if(!select) return;
+            select.innerHTML = '';
+            rawInventory.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.id;
+                opt.innerText = `${item.nombre} (${item.unit})`;
+                select.appendChild(opt);
+            });
+            updateAdjustmentLabel();
+        }
+
+        function updateAdjustmentLabel() {
+            const select = document.getElementById('adjProduct');
+            if(!select) return;
+            const selectedId = select.value;
+            const item = rawInventory.find(i => i.id === selectedId);
+            if(item) {
+                document.getElementById('adjUnitLabel').innerText = item.unit;
             }
         }
 
-        // Simulate file processing with loader feedback
-        function processManualUpload() {
-            const pdfInput = document.getElementById('filePdf');
-            const xlsInput = document.getElementById('fileXls');
-            const btn = document.getElementById('btnProcess');
-            
-            // Check if files are selected, or simulate processing default files if empty
-            const pdfName = pdfInput.files[0] ? pdfInput.files[0].name : "corte_caja_Turno_7422_Empresa_1.pdf";
-            const xlsName = xlsInput.files[0] ? xlsInput.files[0].name : "productosvendidos_1_7422.xls";
+        function setAdjustmentType(type) {
+            activeAdjustmentType = type;
+            const btnIn = document.getElementById('btnAdjIn');
+            const btnOut = document.getElementById('btnAdjOut');
 
-            // Visual Processing State
+            if(type === 'IN') {
+                btnIn.className = "bg-grill-green/20 text-grill-green border border-grill-green py-2 px-3 rounded-lg font-bold transition-all text-center text-xs";
+                btnOut.className = "bg-grill-darkest text-slate-400 border border-grill-border py-2 px-3 rounded-lg font-bold transition-all text-center text-xs";
+            } else {
+                btnIn.className = "bg-grill-darkest text-slate-400 border border-grill-border py-2 px-3 rounded-lg font-bold transition-all text-center text-xs";
+                btnOut.className = "bg-grill-red/20 text-grill-red border border-grill-red py-2 px-3 rounded-lg font-bold transition-all text-center text-xs";
+            }
+        }
+
+        function submitAdjustment() {
+            const selectedId = document.getElementById('adjProduct').value;
+            const qty = parseFloat(document.getElementById('adjQty').value);
+            const reason = document.getElementById('adjReason').value.trim() || "Ajuste manual administrativo";
+            const item = rawInventory.find(i => i.id === selectedId);
+
+            if(!qty || qty <= 0) {
+                showToast("Por favor ingresa una cantidad válida.");
+                return;
+            }
+
+            if(activeAdjustmentType === 'IN') {
+                item.stock += qty;
+                addInventoryLog(item.nombre, "ENTRADA", `+${qty} ${item.unit}`, reason, "Paola");
+                showToast(`Entrada registrada: +${qty} ${item.unit} de ${item.nombre}`);
+                document.getElementById('invLastMove').innerText = `Entrada manual: +${qty} ${item.unit} de ${item.nombre}`;
+            } else {
+                if(item.stock < qty) {
+                    showToast("No hay suficiente existencia en inventario para esa salida.");
+                    return;
+                }
+                item.stock -= qty;
+                addInventoryLog(item.nombre, "SALIDA", `-${qty} ${item.unit}`, reason, "Paola");
+                showToast(`Salida registrada: -${qty} ${item.unit} de ${item.nombre}`);
+                document.getElementById('invLastMove').innerText = `Merma registrada: -${qty} ${item.unit} de ${item.nombre}`;
+            }
+
+            renderInventoryTable();
+            renderInventoryLogs();
+            
+            // Clear fields
+            document.getElementById('adjQty').value = '';
+            document.getElementById('adjReason').value = '';
+        }
+
+        function quickRefill(id, amount) {
+            const item = rawInventory.find(i => i.id === id);
+            if(item) {
+                item.stock += amount;
+                addInventoryLog(item.nombre, "ENTRADA", `+${amount} ${item.unit}`, "Refill Rápido de Almacén", "Paola");
+                renderInventoryTable();
+                renderInventoryLogs();
+                showToast(`Abastecimiento rápido de ${amount} ${item.unit} a ${item.nombre}`);
+                document.getElementById('invLastMove').innerText = `Surtido rápido: +${amount} ${item.unit} a ${item.nombre}`;
+            }
+        }
+
+        function addInventoryLog(insumo, op, cant, motivo, responsable) {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+            inventoryLogs.unshift({
+                fecha: dateStr,
+                insumo: insumo,
+                op: op,
+                cant: cant,
+                motivo: motivo,
+                responsable: responsable
+            });
+        }
+
+        function renderInventoryLogs() {
+            const tbody = document.getElementById('invLogsBody');
+            tbody.innerHTML = '';
+            inventoryLogs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-grill-border/20 border-b border-grill-border/30';
+                
+                const badgeColor = log.op === 'ENTRADA' ? 'text-grill-green font-bold' : log.op === 'SALIDA' ? 'text-grill-red font-bold' : 'text-slate-400';
+
+                tr.innerHTML = `
+                    <td class="px-5 py-2.5 text-grill-textMuted">${log.fecha}</td>
+                    <td class="px-5 py-2.5 text-white font-bold">${log.insumo}</td>
+                    <td class="px-5 py-2.5"><span class="${badgeColor}">${log.op}</span></td>
+                    <td class="px-5 py-2.5 text-center font-bold text-white">${log.cant}</td>
+                    <td class="px-5 py-2.5 text-slate-300">${log.motivo}</td>
+                    <td class="px-5 py-2.5 text-grill-gold">${log.responsable}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ---------------- INTERACTIVIDAD DEL CHAT WHATSAPP EVOLUTION ----------------
+        function renderChatRoomsList(filterQuery = "") {
+            const container = document.getElementById('chatRoomsContainer');
+            container.innerHTML = '';
+
+            const query = filterQuery.toLowerCase();
+            const filtered = chatsDatabase.filter(chat => 
+                chat.nombre.toLowerCase().includes(query) || 
+                chat.phone.includes(query)
+            );
+
+            filtered.forEach(chat => {
+                const isActive = chat.id === activeChatId;
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `p-3.5 flex items-center justify-between cursor-pointer transition-all border-l-4 ${
+                    isActive ? 'bg-grill-border/40 border-l-grill-orange' : 'hover:bg-grill-border/20 border-l-transparent'
+                }`;
+                itemDiv.onclick = () => selectChatRoom(chat.id);
+
+                const statusColor = chat.status === 'online' ? 'bg-grill-green' : chat.status === 'typing' ? 'bg-grill-gold animate-bounce' : 'bg-slate-600';
+
+                itemDiv.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-full bg-grill-darkest flex items-center justify-center font-bold text-sm text-grill-gold relative flex-shrink-0">
+                            ${chat.avatarText}
+                            <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ${statusColor} border border-grill-card"></span>
+                        </div>
+                        <div class="min-w-0">
+                            <h5 class="text-xs font-bold text-white truncate">${chat.nombre}</h5>
+                            <p class="text-[10px] text-grill-textMuted truncate mt-0.5">${chat.lastMsg}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end flex-shrink-0 ml-2">
+                        <span class="text-[8px] text-grill-textMuted font-mono">${chat.lastMsgTime}</span>
+                        ${chat.unread ? '<span class="w-2 h-2 rounded-full bg-grill-orange mt-1"></span>' : ''}
+                    </div>
+                `;
+                container.appendChild(itemDiv);
+            });
+        }
+
+        function selectChatRoom(id) {
+            activeChatId = id;
+            const chat = chatsDatabase.find(c => c.id === id);
+            if (chat) {
+                chat.unread = false;
+            }
+            renderChatRoomsList();
+            renderActiveConversation();
+        }
+
+        function filterChats() {
+            const q = document.getElementById('chatSearch').value;
+            renderChatRoomsList(q);
+        }
+
+        function renderActiveConversation() {
+            const chat = chatsDatabase.find(c => c.id === activeChatId);
+            if (!chat) return;
+
+            // Header Update
+            document.getElementById('activeChatName').innerText = chat.nombre;
+            document.getElementById('activeChatPhone').innerText = chat.phone;
+            const avatar = document.getElementById('activeChatAvatar');
+            avatar.innerText = chat.avatarText;
+
+            // Feed Update
+            const feed = document.getElementById('chatMessagesFeed');
+            feed.innerHTML = '';
+
+            chat.messages.forEach(msg => {
+                const wrapper = document.createElement('div');
+                const isOutgoing = msg.sender === 'api';
+                wrapper.className = `flex ${isOutgoing ? 'justify-end' : 'justify-start'} w-full`;
+
+                const card = document.createElement('div');
+                card.className = `max-w-[75%] rounded-2xl px-3.5 py-2 text-xs relative ${
+                    isOutgoing 
+                        ? 'bg-gradient-to-br from-grill-orange to-grill-gold text-grill-darkest font-medium rounded-tr-none' 
+                        : 'bg-grill-card border border-grill-border text-slate-200 rounded-tl-none'
+                }`;
+
+                card.innerHTML = `
+                    <p class="leading-relaxed break-words">${msg.text}</p>
+                    <div class="flex items-center justify-end gap-1 mt-1 text-[8px] ${isOutgoing ? 'text-grill-darkest/70' : 'text-grill-textMuted'} font-mono">
+                        <span>${msg.time}</span>
+                        ${isOutgoing ? '<i class="fa-solid fa-check-double"></i>' : ''}
+                    </div>
+                `;
+
+                wrapper.appendChild(card);
+                feed.appendChild(wrapper);
+            });
+
+            // Scroll to the bottom of the feed viewport
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        function handleSendChat(event) {
+            event.preventDefault();
+            const input = document.getElementById('chatInputField');
+            const text = input.value.trim();
+            if(!text) return;
+
+            const chat = chatsDatabase.find(c => c.id === activeChatId);
+            if(!chat) return;
+
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+            // Add client/operator outgoing message
+            const newMsg = { sender: 'api', text: text, time: timeStr };
+            chat.messages.push(newMsg);
+            chat.lastMsg = text;
+            chat.lastMsgTime = timeStr;
+
+            // Clear input
+            input.value = '';
+
+            // Render update
+            renderActiveConversation();
+            renderChatRoomsList();
+            showToast("Mensaje procesado mediante Evolution API.");
+
+            // Simulate customer automatic response
+            simulateAutoReply(chat.id);
+        }
+
+        function simulateAutoReply(chatId) {
+            // Find chat database entry
+            const chat = chatsDatabase.find(c => c.id === chatId);
+            if (!chat) return;
+
+            chat.status = 'typing';
+            renderChatRoomsList();
+
+            setTimeout(() => {
+                const replies = [
+                    "¡Entendido! Muchas gracias por el seguimiento. Nos vemos al rato en el asador.",
+                    "Excelente, gracias por el servicio. Llevaré a 2 acompañantes más si es posible.",
+                    "Perfecto, ¿me podrían preparar también una mesa que tenga espacio para silla de ruedas?",
+                    "Gracias, me pondré en contacto de nuevo si surge un imprevisto."
+                ];
+                const randomReply = replies[Math.floor(Math.random() * replies.length)];
+                
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                chat.messages.push({ sender: 'client', text: randomReply, time: timeStr });
+                chat.lastMsg = randomReply;
+                chat.lastMsgTime = timeStr;
+                chat.status = 'online';
+
+                if (activeChatId === chatId) {
+                    renderActiveConversation();
+                } else {
+                    chat.unread = true;
+                }
+                renderChatRoomsList();
+                showToast(`Nuevo mensaje recibido de: ${chat.nombre}`);
+            }, 1800);
+        }
+
+        function insertQuickReply() {
+            const input = document.getElementById('chatInputField');
+            input.value = "¡Hola! Bienvenidos a Jimmy's Grill. Te confirmamos que tenemos tu mesa lista. ¿Gusta alguna sugerencia especial?";
+            input.focus();
+        }
+
+        function refreshActiveChat() {
+            showToast("Sincronizando mensajes con servidor central...");
+            setTimeout(() => {
+                renderActiveConversation();
+                showToast("Mensajes de Evolution API actualizados.");
+            }, 600);
+        }
+
+        function refreshQR() {
+            const qrImg = document.getElementById('qrCodeImage');
+            qrImg.style.opacity = '0.3';
+            showToast("Sincronizando con Evolution API, refrescando código QR...");
+            
+            setTimeout(() => {
+                qrImg.src = "https://placehold.co/120x120/ffffff/000000?text=Evolution+QR+" + Math.floor(Math.random() * 100);
+                qrImg.style.opacity = '1';
+                showToast("Código QR Actualizado.");
+            }, 1000);
+        }
+
+        // ---------------- CONTROL DE CARGA DE ARCHIVOS MANUAL ----------------
+        function handleFileSelected(type) {
+            const input = document.getElementById(type === 'pdf' ? 'filePdf' : 'fileXls');
+            const label = document.getElementById(type === 'pdf' ? 'labelPdf' : 'labelXls');
+            const dropzone = document.getElementById(type === 'pdf' ? 'dropzonePdf' : 'dropzoneXls');
+
+            if (input.files && input.files[0]) {
+                const name = input.files[0].name;
+                label.innerText = name;
+                label.className = "text-[10px] bg-grill-orange/15 px-2.5 py-1 rounded-lg border border-grill-orange/40 text-grill-orange max-w-xs truncate font-mono font-bold";
+                dropzone.classList.remove('border-grill-border');
+                dropzone.classList.add('border-grill-orange/70', 'bg-grill-orange/5');
+                
+                showToast(`Archivo ${type.toUpperCase()} cargado para integración`);
+            }
+        }
+
+        function processManualUpload() {
+            const btn = document.getElementById('btnProcessUpload');
+            const originalHtml = btn.innerHTML;
+
             btn.disabled = true;
-            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Procesando e Integrando...</span>`;
-            btn.className = "w-full sm:w-auto bg-bay-border text-bay-textMuted font-bold text-xs px-6 py-2.5 rounded-xl cursor-not-allowed flex items-center justify-center gap-2";
+            btn.innerHTML = `<i class="fa-solid fa-arrows-spin animate-spin text-grill-darkest"></i> <span>Consolidando Datos...</span>`;
+            btn.className = "w-full sm:w-auto bg-grill-border text-slate-400 font-extrabold text-xs px-6 py-2.5 rounded-xl cursor-not-allowed flex items-center justify-center gap-2";
 
             setTimeout(() => {
                 // Restore button
                 btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-sync"></i> <span>Procesar e Integrar Datos</span>`;
-                btn.className = "w-full sm:w-auto bg-bay-gold text-bay-dark font-bold text-xs px-6 py-2.5 rounded-xl hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-bay-gold/10";
-                
-                // Show successful integration Toast
-                showToast(`Sincronización exitosa: ${pdfName} y ${xlsName} procesados.`);
+                btn.innerHTML = originalHtml;
+                btn.className = "w-full sm:w-auto bg-grill-orange hover:bg-grill-orangeHover text-grill-darkest font-extrabold text-xs px-6 py-2.5 rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-grill-orange/20";
+
+                // Update last synchronization text
+                const now = new Date();
+                const formattedDate = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+                document.getElementById('lastSyncLabel').innerText = formattedDate;
+
+                // SIMULATION: Automatically discount specific items from the inventory based on 'productosvendidos_1_7422.xls'
+                const arrachera = rawInventory.find(i => i.id === 'carne');
+                const carbon = rawInventory.find(i => i.id === 'carbon');
+                const naranja = rawInventory.find(i => i.id === 'naranja');
+                const panDulce = rawInventory.find(i => i.id === 'pan_dulce');
+                const refrescos = rawInventory.find(i => i.id === 'refrescos');
+
+                if (arrachera) arrachera.stock = Math.max(0, arrachera.stock - 3.5); 
+                if (carbon) carbon.stock = Math.max(0, carbon.stock - 12.0); 
+                if (naranja) naranja.stock = Math.max(0, naranja.stock - 22.0); 
+                if (panDulce) panDulce.stock = Math.max(0, panDulce.stock - 33.0); 
+                if (refrescos) refrescos.stock = Math.max(0, refrescos.stock - 6.0); 
+
+                // Add logs
+                addInventoryLog("Corte Caja 7422", "SALIDA", "-3.5 Kg", "Descuento de cortes de Arrachera", "Sistema");
+                addInventoryLog("Corte Caja 7422", "SALIDA", "-12.0 Kg", "Quema de carbón calculado en cocina", "Sistema");
+                addInventoryLog("Corte Caja 7422", "SALIDA", "-33.0 Pz", "Piezas de Pan Dulce entregadas", "Sistema");
+
+                // Update inventory displays
+                renderInventoryTable();
+                renderInventoryLogs();
+
+                // Auto alert triggered inside WhatsApp chats database
+                const alertsChat = chatsDatabase.find(c => c.id === 'chat_03');
+                if (alertsChat) {
+                    alertsChat.messages.push({
+                        sender: "api",
+                        text: `Alerta Sincronización: Archivo 'productosvendidos_1_7422.xls' integrado con éxito. Ventas acumuladas de $13,867.50 consolidadas y descontadas de stock.`,
+                        time: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                    });
+                    alertsChat.lastMsg = "Alerta Sincronización: Archivo integrado con éxito.";
+                    alertsChat.lastMsgTime = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    if(activeChatId === 'chat_03') {
+                        renderActiveConversation();
+                    } else {
+                        alertsChat.unread = true;
+                    }
+                    renderChatRoomsList();
+                }
+
+                showToast("¡Ventas actualizadas y stock de inventario descontado exitosamente!");
             }, 1800);
         }
 
-        // Pop Toast Notification
+        // ---------------- TOAST DE NOTIFICACIÓN Y UTILERÍAS ----------------
         function showToast(message) {
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toastMsg');
@@ -568,13 +1434,32 @@
             toast.classList.remove('hidden');
             setTimeout(() => {
                 toast.classList.add('hidden');
-            }, 3500);
+            }, 3000);
         }
 
-        // Initialize simplified beautiful charts
+        function copyToClipboard(text) {
+            const temp = document.createElement('input');
+            document.body.appendChild(temp);
+            temp.value = text;
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast("Enlace de Evolution API copiado.");
+        }
+
         window.onload = function() {
-            // Render Table
-            renderTable(productsList);
+            // Render basic layouts
+            renderSalesTable(rawSalesList);
+            renderInventoryTable();
+            renderRecipesWidget();
+            populateInventorySelect();
+            renderInventoryLogs();
+
+            // Link selection listeners to ensure no reference warnings
+            const selectEl = document.getElementById('adjProduct');
+            if(selectEl) {
+                selectEl.addEventListener('change', updateAdjustmentLabel);
+            }
 
             const chartConfig = {
                 responsive: true,
@@ -582,15 +1467,15 @@
                 plugins: { legend: { display: false } }
             };
 
-            // 1. Waiters performance
+            // Chart 1: Desempeño de Meseros
             new Chart(document.getElementById('waitersChart').getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: ['Joan', 'Diego', 'Valentin'],
                     datasets: [{
                         data: [8664.50, 3518.00, 1398.00],
-                        backgroundColor: ['#d4af37', '#e07a5f', '#38bdf8'],
-                        borderRadius: 6
+                        backgroundColor: ['#f97316', '#f59e0b', '#38bdf8'],
+                        borderRadius: 8
                     }]
                 },
                 options: {
@@ -602,14 +1487,14 @@
                 }
             });
 
-            // 2. Payments donut chart
+            // Chart 2: Formas de Pago
             new Chart(document.getElementById('paymentsChart').getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: ['Efectivo', 'Tarjeta (Visa)', 'Transferencia'],
                     datasets: [{
                         data: [11394.50, 2328.00, 145.00],
-                        backgroundColor: ['#10b981', '#0ea5e9', '#eab308'],
+                        backgroundColor: ['#10b981', '#0ea5e9', '#f59e0b'],
                         borderWidth: 0
                     }]
                 },
@@ -617,18 +1502,18 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    cutout: '75%'
+                    cutout: '72%'
                 }
             });
 
-            // 3. Service areas donut
+            // Chart 3: Distribución del Área
             new Chart(document.getElementById('serviceChart').getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: ['Comedor', 'Rápido'],
                     datasets: [{
                         data: [11984.48, 125.00],
-                        backgroundColor: ['#38bdf8', '#e07a5f'],
+                        backgroundColor: ['#f97316', '#ef4444'],
                         borderWidth: 0
                     }]
                 },
@@ -636,7 +1521,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
-                    cutout: '75%'
+                    cutout: '72%'
                 }
             });
         };
